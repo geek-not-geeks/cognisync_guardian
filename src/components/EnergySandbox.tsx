@@ -20,13 +20,8 @@ type EnergyLevel = keyof typeof STATUS_CONFIG;
 
 export function EnergySandbox() {
   const [level, setLevel] = useState<EnergyLevel>(3);
-  const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const status = STATUS_CONFIG[level];
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -62,7 +57,6 @@ export function EnergySandbox() {
             defaultValue={level}
             onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
             className="w-full accent-accent-mint"
-            disabled={!mounted}
           />
           <div className="mt-2 flex justify-between text-xs text-text-secondary">
             <span>1</span>
@@ -94,5 +88,6 @@ export function EnergySandbox() {
     </div>
   );
 }
+
 
 
