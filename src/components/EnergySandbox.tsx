@@ -25,9 +25,7 @@ export function EnergySandbox() {
   return (
     <div className="rounded-xl border border-slate-800 bg-surface p-6">
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-foreground">
-          Energy Sandbox
-        </h2>
+        <h2 className="text-lg font-semibold text-foreground">Energy Sandbox</h2>
         <p className="mt-1 text-sm text-text-secondary">
           Slide to see how your energy level reshapes the day.
         </p>
@@ -49,7 +47,7 @@ export function EnergySandbox() {
             max={3}
             step={1}
             value={level}
-            onChange={(e) => setLevel(Number(e.target.value) as EnergyLevel)}
+            onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
             className="w-full accent-accent-mint"
           />
           <div className="mt-2 flex justify-between text-xs text-text-secondary">
@@ -61,9 +59,12 @@ export function EnergySandbox() {
 
         <div className="flex items-center justify-center">
           <motion.div
-            animate={{ backgroundColor: status.background }}
+            key={status.label}
+            initial={{ scale: 0.95, opacity: 0.8 }}
+            animate={{ backgroundColor: status.background, scale: 1, opacity: 1 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
             className="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
+            data-level={level}
           >
             {status.label}
           </motion.div>
@@ -81,3 +82,4 @@ export function EnergySandbox() {
     </div>
   );
 }
+
