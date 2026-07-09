@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 const STATUS_CONFIG = {
@@ -20,7 +20,19 @@ type EnergyLevel = keyof typeof STATUS_CONFIG;
 
 export function EnergySandbox() {
   const [level, setLevel] = useState<EnergyLevel>(3);
+  const [mounted, setMounted] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const status = STATUS_CONFIG[level];
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.value = String(level);
+    }
+  }, [level]);
 
   return (
     <div className="rounded-xl border border-slate-800 bg-surface p-6">
@@ -41,14 +53,16 @@ export function EnergySandbox() {
             <span>Good</span>
           </label>
           <input
+            ref={inputRef}
             id="energy-slider"
             type="range"
             min={1}
             max={3}
             step={1}
-            value={level}
+            defaultValue={level}
             onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
             className="w-full accent-accent-mint"
+            disabled={!mounted}
           />
           <div className="mt-2 flex justify-between text-xs text-text-secondary">
             <span>1</span>
@@ -80,4 +94,5 @@ export function EnergySandbox() {
     </div>
   );
 }
+
 
