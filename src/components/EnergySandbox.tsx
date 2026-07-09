@@ -59,9 +59,7 @@ export function EnergySandbox() {
 
         <div className="flex items-center justify-center">
           <motion.div
-            key={status.label}
-            initial={{ scale: 0.95, opacity: 0.8 }}
-            animate={{ backgroundColor: status.background, scale: 1, opacity: 1 }}
+            animate={{ backgroundColor: status.background }}
             transition={{ duration: 0.35, ease: "easeOut" }}
             className="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
             data-level={level}
