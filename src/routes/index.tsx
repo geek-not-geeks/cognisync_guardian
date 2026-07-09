@@ -1,24 +1,34 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AppShell } from "@/components/AppShell";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <AppShell>
+      <section>
+        <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">CogniSync</p>
+        <h1 className="mt-2 text-3xl font-semibold text-foreground">
+          Cognitive Load & Burnout Prevention
+        </h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          Adaptive scheduling that respects human energy.
+        </p>
+
+        <div className="mt-8 rounded-xl border border-slate-800 bg-surface p-6">
+          <p className="text-sm text-text-secondary">
+            Use the bottom navigation to move between Dashboard, Add Task, Status, and Profile.
+          </p>
+          <Link
+            to="/dashboard"
+            className="mt-4 inline-flex items-center justify-center rounded-lg bg-accent-mint px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+          >
+            Go to Dashboard
+          </Link>
+        </div>
+      </section>
+    </AppShell>
   );
 }
