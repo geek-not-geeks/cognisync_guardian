@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
+import { EnergySandbox } from "@/components/EnergySandbox";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -8,18 +9,22 @@ export const Route = createFileRoute("/")({
 function Index() {
   return (
     <AppShell>
-      <section>
-        <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">CogniSync</p>
-        <h1 className="mt-2 text-3xl font-semibold text-foreground">
-          Cognitive Load & Burnout Prevention
-        </h1>
-        <p className="mt-2 text-sm text-text-secondary">
-          Adaptive scheduling that respects human energy.
-        </p>
+      <section className="space-y-6">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">CogniSync</p>
+          <h1 className="mt-2 text-3xl font-semibold text-foreground">
+            Cognitive Load & Burnout Prevention
+          </h1>
+          <p className="mt-2 text-sm text-text-secondary">
+            Adaptive scheduling that respects human energy.
+          </p>
+        </div>
 
-        <div className="mt-8 rounded-xl border border-slate-800 bg-surface p-6">
+        <EnergySandbox />
+
+        <div className="rounded-xl border border-slate-800 bg-surface p-6">
           <p className="text-sm text-text-secondary">
-            Use the bottom navigation to move between Dashboard, Add Task, Status, and Profile.
+            Ready to protect your schedule? Create an account or explore the dashboard.
           </p>
           <Link
             to="/dashboard"
