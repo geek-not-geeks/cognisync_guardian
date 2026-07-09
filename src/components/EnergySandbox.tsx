@@ -80,7 +80,3 @@ export function EnergySandbox() {
     </div>
   );
 }
-
-
-
-
