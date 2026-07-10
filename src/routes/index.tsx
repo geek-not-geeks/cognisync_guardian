@@ -22,13 +22,13 @@ function Index() {
 
         <EnergySandbox />
 
-        <div className="rounded-xl border border-slate-800 bg-surface p-6">
+        <div className="rounded-[32px] bg-[#1E293B] p-6 shadow-3d-base">
           <p className="text-sm text-text-secondary">
             Ready to protect your schedule? Create an account or explore the dashboard.
           </p>
           <Link
             to="/dashboard"
-            className="mt-4 inline-flex items-center justify-center rounded-lg bg-accent-mint px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+            className="mt-4 inline-flex items-center justify-center rounded-full bg-accent-mint px-6 py-3 text-sm font-semibold text-background shadow-3d-base transition-transform active:scale-[0.98]"
           >
             Go to Dashboard
           </Link>
