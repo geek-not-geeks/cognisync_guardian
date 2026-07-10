@@ -40,6 +40,7 @@ export function EnergySandbox() {
             <span>Drained</span>
             <span>Good</span>
           </label>
+        <div className="rounded-full bg-[#1E293B] p-3 shadow-3d-pressed">
           <input
             id="energy-slider"
             type="range"
@@ -47,6 +48,11 @@ export function EnergySandbox() {
             max={3}
             step={1}
             defaultValue={level}
+            onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
+            className="w-full accent-accent-mint"
+          />
+        </div>
+
             onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
             className="w-full accent-accent-mint"
           />
