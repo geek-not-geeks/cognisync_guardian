@@ -64,7 +64,7 @@ export function EnergySandbox() {
           <motion.div
             animate={{ backgroundColor: status.background }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
+            className="rounded-full px-6 py-3 text-sm font-semibold text-white shadow-3d-base"
             data-level={level}
           >
             {status.label}
