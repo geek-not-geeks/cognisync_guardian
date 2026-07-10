@@ -3,13 +3,13 @@ import { Home, PlusCircle, Activity, User, type LucideIcon } from "lucide-react"
 import type { ReactNode } from "react";
 
 interface NavItem {
-  to: "/dashboard" | "/add-task" | "/status" | "/profile";
+  to: "/" | "/add-task" | "/status" | "/profile";
   label: string;
   icon: LucideIcon;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: Home },
+  { to: "/", label: "Dashboard", icon: Home },
   { to: "/add-task", label: "Add Task", icon: PlusCircle },
   { to: "/status", label: "Status", icon: Activity },
   { to: "/profile", label: "Profile", icon: User },
