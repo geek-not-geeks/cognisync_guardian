@@ -52,16 +52,13 @@ export function EnergySandbox() {
             className="w-full accent-accent-mint"
           />
         </div>
-
-            onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
-            className="w-full accent-accent-mint"
-          />
           <div className="mt-2 flex justify-between text-xs text-text-secondary">
             <span>1</span>
             <span>2</span>
             <span>3</span>
           </div>
         </div>
+
 
         <div className="flex items-center justify-center">
           <motion.div
