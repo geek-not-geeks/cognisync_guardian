@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { IngestionHub } from "@/components/IngestionHub";
 
 export const Route = createFileRoute("/add-task")({
   head: () => ({
@@ -15,10 +15,8 @@ export const Route = createFileRoute("/add-task")({
 function AddTaskPage() {
   return (
     <AppShell>
-      <PlaceholderPage
-        title="Add Task"
-        description="Text, camera, and document ingestion hub."
-      />
+      <IngestionHub />
     </AppShell>
   );
 }
+
