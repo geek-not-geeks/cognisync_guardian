@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { MessageSquare, Camera, FileUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { MediaCapture, type MediaCaptureMode } from "./MediaCapture";
 
 interface IngestionOption {
-  id: string;
+  id: "quick-text" | "camera-ocr" | "document-upload";
   icon: LucideIcon;
   title: string;
   subtitle: string;
@@ -30,6 +32,18 @@ const OPTIONS: IngestionOption[] = [
 ];
 
 export function IngestionHub() {
+  const [captureMode, setCaptureMode] = useState<MediaCaptureMode | null>(null);
+
+  if (captureMode) {
+    return (
+      <MediaCapture
+        mode={captureMode}
+        onClose={() => setCaptureMode(null)}
+        onConfirm={() => setCaptureMode(null)}
+      />
+    );
+  }
+
   return (
     <section className="space-y-6">
       <header className="text-center">
@@ -44,6 +58,10 @@ export function IngestionHub() {
           <button
             key={id}
             type="button"
+            onClick={() => {
+              if (id === "camera-ocr") setCaptureMode("camera");
+              else if (id === "document-upload") setCaptureMode("upload");
+            }}
             className="group w-full rounded-[32px] bg-[#1E293B] p-6 text-left shadow-3d-base transition-all duration-200 hover:shadow-3d-pressed active:scale-[0.98] active:shadow-3d-pressed"
           >
             <div className="flex items-center gap-5">
