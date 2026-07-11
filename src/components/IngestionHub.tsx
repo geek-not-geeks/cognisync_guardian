@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MessageSquare, Camera, FileUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { MediaCapture, type MediaCaptureMode } from "./MediaCapture";
+import { OCRReviewDrawer } from "./OCRReviewDrawer";
 
 interface IngestionOption {
   id: "quick-text" | "camera-ocr" | "document-upload";
