@@ -93,8 +93,9 @@ export function IngestionHub() {
             key={id}
             type="button"
             onClick={() => {
-              if (id === "camera-ocr") setCaptureMode("camera");
-              else if (id === "document-upload") setCaptureMode("upload");
+              if (id === "quick-text") setMode("quick-text");
+              else if (id === "camera-ocr") setMode("camera");
+              else if (id === "document-upload") setMode("upload");
             }}
             className="group w-full rounded-[32px] bg-[#1E293B] p-6 text-left shadow-3d-base transition-all duration-200 hover:shadow-3d-pressed active:scale-[0.98] active:shadow-3d-pressed"
           >
