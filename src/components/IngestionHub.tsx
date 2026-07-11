@@ -35,28 +35,48 @@ const OPTIONS: IngestionOption[] = [
 ];
 
 export function IngestionHub() {
-  const [captureMode, setCaptureMode] = useState<MediaCaptureMode | null>(null);
+  const [mode, setMode] = useState<"quick-text" | MediaCaptureMode | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  if (captureMode) {
+  const openReview = () => setReviewOpen(true);
+  const closeReview = () => setReviewOpen(false);
+
+  if (mode === "quick-text") {
     return (
       <>
-        <MediaCapture
-          mode={captureMode}
-          onClose={() => setCaptureMode(null)}
-          onConfirm={() => {
-            setCaptureMode(null);
-            setReviewOpen(true);
-          }}
+        <QuickTextInput
+          onClose={() => setMode(null)}
+          onProcess={openReview}
         />
         <OCRReviewDrawer
           open={reviewOpen}
-          onClose={() => setReviewOpen(false)}
-          onConfirm={() => setReviewOpen(false)}
+          onClose={closeReview}
+          onConfirm={closeReview}
         />
       </>
     );
   }
+
+  if (mode) {
+    return (
+      <>
+        <MediaCapture
+          mode={mode}
+          onClose={() => setMode(null)}
+          onConfirm={() => {
+            setMode(null);
+            openReview();
+          }}
+        />
+        <OCRReviewDrawer
+          open={reviewOpen}
+          onClose={closeReview}
+          onConfirm={closeReview}
+        />
+      </>
+    );
+  }
+
 
   return (
     <section className="space-y-6">
