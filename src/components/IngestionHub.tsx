@@ -3,6 +3,8 @@ import { MessageSquare, Camera, FileUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { MediaCapture, type MediaCaptureMode } from "./MediaCapture";
 import { OCRReviewDrawer } from "./OCRReviewDrawer";
+import { QuickTextInput } from "./QuickTextInput";
+
 
 interface IngestionOption {
   id: "quick-text" | "camera-ocr" | "document-upload";
