@@ -34,14 +34,25 @@ const OPTIONS: IngestionOption[] = [
 
 export function IngestionHub() {
   const [captureMode, setCaptureMode] = useState<MediaCaptureMode | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   if (captureMode) {
     return (
-      <MediaCapture
-        mode={captureMode}
-        onClose={() => setCaptureMode(null)}
-        onConfirm={() => setCaptureMode(null)}
-      />
+      <>
+        <MediaCapture
+          mode={captureMode}
+          onClose={() => setCaptureMode(null)}
+          onConfirm={() => {
+            setCaptureMode(null);
+            setReviewOpen(true);
+          }}
+        />
+        <OCRReviewDrawer
+          open={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+          onConfirm={() => setReviewOpen(false)}
+        />
+      </>
     );
   }
 
