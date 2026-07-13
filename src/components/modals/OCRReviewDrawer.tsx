@@ -46,6 +46,46 @@ export function OCRReviewDrawer({
     ...DEFAULT_TASK,
     ...initialData,
   });
+  const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  async function handleConfirm() {
+    if (!user) {
+      toast.error("You must be signed in to save tasks.");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      user_id: user.id,
+      title: task.title,
+      raw_text: task.rawText ?? null,
+      effort_size: task.effortSize,
+      difficulty: task.difficulty,
+      deadline: task.deadline ?? null,
+      status: "pending" as const,
+      is_governor_locked: false,
+    };
+
+    try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueue({ kind: "task_insert", payload });
+        toast.success("Saved offline — will sync when back online.");
+      } else {
+        const { error } = await supabase.from("tasks").insert(payload as never);
+        if (error) {
+          await enqueue({ kind: "task_insert", payload });
+          toast.error(`Queued: ${error.message}`);
+        } else {
+          toast.success("Task synced");
+        }
+      }
+      void queryClient.invalidateQueries({ queryKey: ["tasks_count"] });
+      onConfirm?.(task);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <AnimatePresence>
