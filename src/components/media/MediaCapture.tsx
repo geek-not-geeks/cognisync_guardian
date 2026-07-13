@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera, FileUp, RefreshCw, X, Check, Video, Square } from "lucide-react";
+import { compressToWebP } from "@/utils/mediaCompression";
 
 export type MediaCaptureMode = "camera" | "upload";
 type CaptureKind = "photo" | "video";
@@ -13,7 +14,7 @@ interface MediaCaptureProps {
 
 export interface CapturedAsset {
   kind: "image" | "pdf" | "video";
-  /** data URL for images, object URL for uploaded files or recorded video */
+  /** blob: URL for uploads or recorded video; blob: URL for compressed WebP images. */
   previewUrl: string;
   blob?: Blob;
   file?: File;
@@ -23,65 +24,13 @@ export interface CapturedAsset {
 
 // 25 MB — support high-res syllabi and multi-page PDFs.
 const MAX_BYTES = 25 * 1024 * 1024;
-// 2 MB target for compressed WebP output.
-const TARGET_WEBP_BYTES = 2 * 1024 * 1024;
 // 10 s hard cap on video recordings.
 const MAX_VIDEO_MS = 10_000;
-
-/**
- * Compress an image (data URL, blob, or file) into WebP under 2 MB using HTML5 Canvas.
- * Iteratively scales down and drops quality until the output fits.
- */
-async function compressToWebP(source: string | Blob): Promise<Blob> {
-  const dataUrl =
-    typeof source === "string"
-      ? source
-      : await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(source);
-        });
-
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const el = new Image();
-    el.onload = () => resolve(el);
-    el.onerror = () => reject(new Error("Failed to decode image"));
-    el.src = dataUrl;
-  });
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D context unavailable");
-
-  let scale = 1;
-  let quality = 0.9;
-  const MAX_DIM = 2400;
-  const longest = Math.max(img.naturalWidth, img.naturalHeight);
-  if (longest > MAX_DIM) scale = MAX_DIM / longest;
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/webp", quality),
-    );
-    if (blob && blob.size <= TARGET_WEBP_BYTES) return blob;
-    if (blob && attempt === 7) return blob; // give up, return smallest we got
-
-    // Alternate dropping quality then scaling to converge quickly.
-    if (attempt % 2 === 0) quality = Math.max(0.4, quality - 0.15);
-    else scale *= 0.8;
-  }
-  throw new Error("Compression failed");
-}
 
 export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const videoChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,17 +48,64 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     [],
   );
 
+  /**
+   * Terminate every active MediaStream track. Called on unmount and whenever
+   * the live camera should transition off (asset captured, upload mode).
+   * Prevents the browser's red camera indicator from lingering and stops
+   * hardware battery drain on mobile PWAs.
+   */
+  const stopMediaTracks = useCallback(() => {
+    const stream = streamRef.current;
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        try {
+          track.stop();
+        } catch {
+          /* noop */
+        }
+      }
+      streamRef.current = null;
+    }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        /* noop */
+      }
+    }
+    if (recordTimerRef.current) {
+      clearTimeout(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (recordIntervalRef.current) {
+      clearInterval(recordIntervalRef.current);
+      recordIntervalRef.current = null;
+    }
+  }, []);
+
+  // Trigger file picker automatically in upload mode.
   useEffect(() => {
     if (mode === "upload" && !asset) fileInputRef.current?.click();
   }, [mode, asset]);
 
+  // Kill the live camera the moment we have a preview or leave camera mode.
+  useEffect(() => {
+    if (mode !== "camera" || asset) stopMediaTracks();
+  }, [mode, asset, stopMediaTracks]);
+
+  // Global cleanup on unmount: hardware release + blob URL revocation.
   useEffect(() => {
     return () => {
-      if (asset?.previewUrl.startsWith("blob:")) URL.revokeObjectURL(asset.previewUrl);
-      if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
-      if (recordIntervalRef.current) clearInterval(recordIntervalRef.current);
+      stopMediaTracks();
     };
-  }, [asset]);
+  }, [stopMediaTracks]);
+
+  useEffect(() => {
+    const url = asset?.previewUrl;
+    return () => {
+      if (url && url.startsWith("blob:")) URL.revokeObjectURL(url);
+    };
+  }, [asset?.previewUrl]);
 
   const handleSnap = useCallback(async () => {
     const shot = webcamRef.current?.getScreenshot();
@@ -131,15 +127,21 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null; }
-    if (recordIntervalRef.current) { clearInterval(recordIntervalRef.current); recordIntervalRef.current = null; }
+    if (recordTimerRef.current) {
+      clearTimeout(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (recordIntervalRef.current) {
+      clearInterval(recordIntervalRef.current);
+      recordIntervalRef.current = null;
+    }
     const r = recorderRef.current;
     if (r && r.state !== "inactive") r.stop();
     setIsRecording(false);
   }, []);
 
   const handleStartRecording = useCallback(() => {
-    const stream = webcamRef.current?.stream;
+    const stream = streamRef.current ?? webcamRef.current?.stream ?? null;
     if (!stream) {
       setError("Camera stream not ready.");
       return;
@@ -151,7 +153,9 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
       : "video/webm";
     const recorder = new MediaRecorder(stream, { mimeType: mime });
     recorderRef.current = recorder;
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data); };
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) videoChunksRef.current.push(e.data);
+    };
     recorder.onstop = () => {
       const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
       const url = URL.createObjectURL(blob);
@@ -164,11 +168,12 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     recordIntervalRef.current = setInterval(() => {
       setRecordElapsed(Math.min(MAX_VIDEO_MS, Date.now() - startedAt));
     }, 100);
-    // Hard 10s cap.
+    // Hard 10 s cap.
     recordTimerRef.current = setTimeout(stopRecording, MAX_VIDEO_MS);
   }, [stopRecording]);
 
   const handleFile = useCallback(async (file: File) => {
+    // Explicitly permissive: syllabus scans and multi-page PDFs are large.
     if (file.size > MAX_BYTES) {
       setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 25 MB.`);
       return;
@@ -180,7 +185,6 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
       setAsset({ kind: "pdf", previewUrl: url, file, sizeBytes: file.size, name: file.name });
       return;
     }
-    // Compress images to WebP under 2MB.
     setBusy(true);
     try {
       const blob = await compressToWebP(file);
@@ -219,7 +223,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
           type="button"
           onClick={onClose}
           aria-label="Close capture"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1E293B] text-text-secondary shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-text-secondary shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
         >
           <X className="h-5 w-5" />
         </button>
@@ -239,7 +243,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
 
       {/* Photo / Video mode toggle */}
       {mode === "camera" && !asset && (
-        <div className="mx-auto flex w-fit gap-2 rounded-full bg-[#1E293B] p-1 shadow-3d-pressed">
+        <div className="mx-auto flex w-fit gap-2 rounded-full bg-surface p-1 shadow-3d-pressed">
           {(["photo", "video"] as const).map((k) => (
             <button
               key={k}
@@ -248,7 +252,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
               onClick={() => setCaptureKind(k)}
               className={`rounded-full px-5 py-2 text-sm font-medium capitalize transition-all ${
                 captureKind === k
-                  ? "bg-accent-mint text-[#0F172A] shadow-3d-base"
+                  ? "bg-accent-mint text-slate-deep shadow-3d-base"
                   : "text-text-secondary"
               }`}
             >
@@ -260,13 +264,16 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
 
       {/* Live camera — strict 9:16 portrait */}
       {mode === "camera" && !asset && (
-        <div className="relative mx-auto w-full max-w-md overflow-hidden rounded-3xl bg-black shadow-3d-base aspect-[9/16]">
+        <div className="relative mx-auto aspect-[9/16] w-full max-w-md overflow-hidden rounded-3xl bg-black shadow-3d-base">
           <Webcam
             ref={webcamRef}
             audio={captureKind === "video"}
             screenshotFormat="image/webp"
             screenshotQuality={0.92}
             videoConstraints={videoConstraints}
+            onUserMedia={(stream) => {
+              streamRef.current = stream;
+            }}
             className="absolute inset-0 h-full w-full object-cover"
           />
           {isRecording && (
@@ -280,14 +287,14 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
 
       {/* Static preview */}
       {asset && (
-        <div className="mx-auto w-full max-w-md overflow-hidden rounded-3xl bg-[#1E293B] shadow-3d-base aspect-[9/16]">
+        <div className="mx-auto aspect-[9/16] w-full max-w-md overflow-hidden rounded-3xl bg-surface shadow-3d-base">
           {asset.kind === "image" ? (
             <img src={asset.previewUrl} alt="Captured preview" className="h-full w-full object-cover" />
           ) : asset.kind === "video" ? (
             <video src={asset.previewUrl} controls playsInline className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0F172A] shadow-3d-pressed">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-deep shadow-3d-pressed">
                 <FileUp className="h-7 w-7 text-accent-mint" />
               </div>
               <p className="break-all text-base font-semibold text-foreground">{asset.name}</p>
@@ -308,7 +315,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
       )}
 
       {error && (
-        <p className="rounded-2xl bg-[#1E293B] p-4 text-sm text-governor-red shadow-3d-pressed">
+        <p className="rounded-2xl bg-surface p-4 text-sm text-governor-red shadow-3d-pressed">
           {error}
         </p>
       )}
@@ -321,7 +328,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
             onClick={handleSnap}
             disabled={busy}
             aria-label="Capture photo"
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-mint text-[#0F172A] shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all disabled:opacity-60"
+            className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-mint text-slate-deep shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all disabled:opacity-60"
           >
             <Camera className="h-8 w-8" strokeWidth={2.5} />
           </button>
@@ -332,7 +339,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
             type="button"
             onClick={isRecording ? stopRecording : handleStartRecording}
             aria-label={isRecording ? "Stop recording" : "Start recording"}
-            className={`flex h-20 w-20 items-center justify-center rounded-full text-[#0F172A] shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all ${
+            className={`flex h-20 w-20 items-center justify-center rounded-full text-slate-deep shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all ${
               isRecording ? "bg-governor-red text-white" : "bg-accent-mint"
             }`}
           >
@@ -344,7 +351,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-3 rounded-full bg-accent-mint px-8 py-4 text-base font-semibold text-[#0F172A] shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
+            className="flex items-center gap-3 rounded-full bg-accent-mint px-8 py-4 text-base font-semibold text-slate-deep shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
           >
             <FileUp className="h-5 w-5" />
             Choose file
@@ -357,7 +364,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
               type="button"
               onClick={handleRetake}
               aria-label="Retake"
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1E293B] text-text-secondary shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-surface text-text-secondary shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
             >
               <RefreshCw className="h-5 w-5" />
             </button>
@@ -365,7 +372,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
               type="button"
               onClick={() => onConfirm?.(asset)}
               aria-label="Confirm"
-              className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-mint text-[#0F172A] shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-mint text-slate-deep shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
             >
               <Check className="h-9 w-9" strokeWidth={2.5} />
             </button>

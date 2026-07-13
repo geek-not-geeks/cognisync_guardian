@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { MessageSquare, Camera, FileUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { MediaCapture, type MediaCaptureMode } from "./MediaCapture";
-import { OCRReviewDrawer } from "./OCRReviewDrawer";
-import { QuickTextInput } from "./QuickTextInput";
-
+import { MediaCapture, type MediaCaptureMode } from "@/components/media/MediaCapture";
+import { OCRReviewDrawer } from "@/components/modals/OCRReviewDrawer";
+import { QuickTextInput } from "@/components/ingestion/QuickTextInput";
 
 interface IngestionOption {
   id: "quick-text" | "camera-ocr" | "document-upload";
@@ -44,15 +43,8 @@ export function IngestionHub() {
   if (mode === "quick-text") {
     return (
       <>
-        <QuickTextInput
-          onClose={() => setMode(null)}
-          onProcess={openReview}
-        />
-        <OCRReviewDrawer
-          open={reviewOpen}
-          onClose={closeReview}
-          onConfirm={closeReview}
-        />
+        <QuickTextInput onClose={() => setMode(null)} onProcess={openReview} />
+        <OCRReviewDrawer open={reviewOpen} onClose={closeReview} onConfirm={closeReview} />
       </>
     );
   }
@@ -68,15 +60,10 @@ export function IngestionHub() {
             openReview();
           }}
         />
-        <OCRReviewDrawer
-          open={reviewOpen}
-          onClose={closeReview}
-          onConfirm={closeReview}
-        />
+        <OCRReviewDrawer open={reviewOpen} onClose={closeReview} onConfirm={closeReview} />
       </>
     );
   }
-
 
   return (
     <section className="space-y-6">
@@ -97,10 +84,10 @@ export function IngestionHub() {
               else if (id === "camera-ocr") setMode("camera");
               else if (id === "document-upload") setMode("upload");
             }}
-            className="group w-full rounded-[32px] bg-[#1E293B] p-6 text-left shadow-3d-base transition-all duration-200 hover:shadow-3d-pressed active:scale-[0.98] active:shadow-3d-pressed"
+            className="group w-full rounded-4xl bg-surface p-6 text-left shadow-3d-base transition-all duration-200 hover:shadow-3d-pressed active:scale-[0.98] active:shadow-3d-pressed"
           >
             <div className="flex items-center gap-5">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#0F172A] shadow-3d-pressed">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-deep shadow-3d-pressed">
                 <Icon className="h-6 w-6 text-accent-mint" strokeWidth={2} />
               </div>
               <div className="min-w-0">

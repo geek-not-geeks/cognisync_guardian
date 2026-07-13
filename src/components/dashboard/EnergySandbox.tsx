@@ -23,7 +23,7 @@ export function EnergySandbox() {
   const status = STATUS_CONFIG[level];
 
   return (
-    <div className="rounded-[32px] bg-[#1E293B] p-6 shadow-3d-base">
+    <div className="rounded-4xl bg-surface p-6 shadow-3d-base">
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-foreground">Energy Sandbox</h2>
         <p className="mt-1 text-sm text-text-secondary">
@@ -40,7 +40,7 @@ export function EnergySandbox() {
             <span>Drained</span>
             <span>Good</span>
           </label>
-        <div className="rounded-full bg-[#1E293B] p-3 shadow-3d-pressed">
+        <div className="rounded-full bg-surface p-3 shadow-3d-pressed">
           <input
             id="energy-slider"
             type="range"
