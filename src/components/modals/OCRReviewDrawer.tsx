@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, RefreshCw } from "lucide-react";
+import { Check, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { PillGroup } from "@/components/atomic/PillGroup";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { enqueue } from "@/lib/offlineQueue";
 import type {
   Difficulty,
   EffortSize,
