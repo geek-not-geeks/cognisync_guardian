@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/AppShell";
-import { IngestionHub } from "@/components/IngestionHub";
+import { AppShell } from "@/layouts/AppShell";
+import { IngestionHub } from "@/components/ingestion/IngestionHub";
 
 export const Route = createFileRoute("/add-task")({
   head: () => ({

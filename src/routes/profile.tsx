@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/AppShell";
+import { AppShell } from "@/layouts/AppShell";
 import { PlaceholderPage } from "@/components/PlaceholderPage";
 
 export const Route = createFileRoute("/profile")({
