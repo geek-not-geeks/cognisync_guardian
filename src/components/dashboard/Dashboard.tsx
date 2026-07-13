@@ -1,11 +1,61 @@
 import { User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
+import type { DailyCalibrationsRow } from "@/types/database.types";
 
-const RING_RADIUS = 52;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const RING_PROGRESS = 0.85;
-const RING_OFFSET = RING_CIRCUMFERENCE * (1 - RING_PROGRESS);
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export function Dashboard() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const today = todayISO();
+
+  const { data: calibration, isLoading } = useQuery({
+    queryKey: ["daily_calibrations", userId, today],
+    enabled: !!userId,
+    queryFn: async (): Promise<DailyCalibrationsRow | null> => {
+      const { data, error } = await supabase
+        .from("daily_calibrations")
+        .select("*")
+        .eq("user_id", userId!)
+        .eq("date", today)
+        .order("id", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as DailyCalibrationsRow | null) ?? null;
+    },
+  });
+
+  const { data: taskCount } = useQuery({
+    queryKey: ["tasks_count", userId, "pending"],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId!)
+        .eq("status", "pending");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const tier = calibration?.burnout_tier ?? null;
+  const score = calibration ? Math.round((calibration.energy_baseline ?? 0) * 10) : 0;
+  const sleep = calibration?.sleep_quality != null ? `${calibration.sleep_quality}/10` : "—";
+  const energyLabel = calibration
+    ? calibration.energy_baseline >= 7
+      ? "High"
+      : calibration.energy_baseline >= 4
+        ? "Steady"
+        : "Low"
+    : "—";
+
   return (
     <div className="space-y-6 p-4">
       <header className="flex items-center justify-between">
@@ -20,85 +70,41 @@ export function Dashboard() {
         </div>
       </header>
 
-      {/* Macro Burnout Score Card */}
       <div className="rounded-3xl bg-surface p-6 shadow-3d-base">
         <div className="flex flex-col items-center justify-center">
-          <div className="relative h-48 w-48">
-            <svg
-              className="h-full w-full -rotate-90"
-              viewBox="0 0 120 120"
-              aria-label="Burnout score 85%"
-            >
-              <circle
-                cx="60"
-                cy="60"
-                r={RING_RADIUS}
-                stroke="currentColor"
-                strokeWidth="10"
-                fill="none"
-                className="text-slate-700/30"
-              />
-              <circle
-                cx="60"
-                cy="60"
-                r={RING_RADIUS}
-                stroke="var(--color-accent-mint)"
-                strokeWidth="10"
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE}
-                strokeDashoffset={RING_OFFSET}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-xs text-text-secondary">Score</span>
-              <span className="text-3xl font-bold text-foreground">85%</span>
-              <span className="text-sm font-semibold text-accent-mint">Green State</span>
-            </div>
-          </div>
+          {isLoading ? (
+            <div className="h-48 w-48 animate-pulse rounded-full bg-slate-deep/40" />
+          ) : (
+            <MacroScoreRing tier={tier} score={score} />
+          )}
+          {!isLoading && !calibration && (
+            <p className="mt-4 text-center text-xs text-text-secondary">
+              Complete your morning calibration to see today's score.
+            </p>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-full bg-surface px-2 py-4 text-center shadow-3d-base">
           <p className="text-[10px] uppercase tracking-wider text-text-secondary">Sleep</p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">8h</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">{sleep}</p>
         </div>
         <div className="rounded-full bg-surface px-2 py-4 text-center shadow-3d-base">
           <p className="text-[10px] uppercase tracking-wider text-text-secondary">Tasks</p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">4</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">{taskCount ?? 0}</p>
         </div>
         <div className="rounded-full bg-surface px-2 py-4 text-center shadow-3d-base">
           <p className="text-[10px] uppercase tracking-wider text-text-secondary">Energy</p>
-          <p className="mt-0.5 text-sm font-semibold text-accent-mint">High</p>
+          <p className="mt-0.5 text-sm font-semibold text-accent-mint">{energyLabel}</p>
         </div>
       </div>
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">Today's Pacing</h2>
-        <div className="space-y-3">
-          <div className="flex items-center gap-4 rounded-2xl bg-surface p-4 shadow-3d-base">
-            <span className="h-3 w-3 rounded-full bg-accent-mint" aria-hidden="true" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Quick review</p>
-              <p className="text-xs text-text-secondary">15 min • Low effort</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 rounded-2xl bg-surface p-4 shadow-3d-base">
-            <span className="h-3 w-3 rounded-full bg-warning-amber" aria-hidden="true" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Deep work block</p>
-              <p className="text-xs text-text-secondary">90 min • Standard effort</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 rounded-2xl bg-surface p-4 shadow-3d-base">
-            <span className="h-3 w-3 rounded-full bg-accent-mint" aria-hidden="true" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Email triage</p>
-              <p className="text-xs text-text-secondary">20 min • Low effort</p>
-            </div>
-          </div>
-        </div>
+        <p className="text-sm text-text-secondary">
+          Pacing blocks will appear once the Governor schedules today's work.
+        </p>
       </section>
     </div>
   );
