@@ -1,6 +1,8 @@
-import { Link } from "@tanstack/react-router";
-import { Home, PlusCircle, Activity, User, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Home, PlusCircle, Activity, User, WifiOff, type LucideIcon } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { pendingCount, subscribeQueue } from "@/lib/offlineQueue";
 
 interface NavItem {
   to: "/" | "/add-task" | "/status" | "/profile";
@@ -16,10 +18,61 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { session, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session && location.pathname !== "/auth") {
+      void navigate({ to: "/auth" });
+    }
+  }, [loading, session, location.pathname, navigate]);
+
+  if (loading || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-text-secondary">
+        <span className="text-sm">Loading…</span>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <OfflineBanner />
       <main className="mx-auto max-w-2xl px-5 pb-24 pt-6">{children}</main>
       <BottomNav />
+    </div>
+  );
+}
+
+function OfflineBanner() {
+  const [count, setCount] = useState(pendingCount());
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+
+  useEffect(() => {
+    const unsub = subscribeQueue((entries) => setCount(entries.length));
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      unsub();
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  if (online && count === 0) return null;
+
+  return (
+    <div className="mx-auto mt-3 flex max-w-2xl items-center gap-2 rounded-full bg-surface px-4 py-2 text-xs text-warning-amber shadow-3d-base">
+      <WifiOff className="h-4 w-4" />
+      {online
+        ? `Syncing ${count} pending change${count === 1 ? "" : "s"}…`
+        : `Working offline — ${count} change${count === 1 ? "" : "s"} queued`}
     </div>
   );
 }

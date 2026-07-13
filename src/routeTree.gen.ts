@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AddTaskRouteImport } from './routes/add-task'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddTaskRoute = AddTaskRouteImport.update({
   id: '/add-task',
   path: '/add-task',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/add-task': typeof AddTaskRoute
+  '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
   '/status': typeof StatusRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/add-task': typeof AddTaskRoute
+  '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
   '/status': typeof StatusRoute
@@ -59,21 +67,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/add-task': typeof AddTaskRoute
+  '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
   '/status': typeof StatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/add-task' | '/dashboard' | '/profile' | '/status'
+  fullPaths: '/' | '/add-task' | '/auth' | '/dashboard' | '/profile' | '/status'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/add-task' | '/dashboard' | '/profile' | '/status'
-  id: '__root__' | '/' | '/add-task' | '/dashboard' | '/profile' | '/status'
+  to: '/' | '/add-task' | '/auth' | '/dashboard' | '/profile' | '/status'
+  id:
+    | '__root__'
+    | '/'
+    | '/add-task'
+    | '/auth'
+    | '/dashboard'
+    | '/profile'
+    | '/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AddTaskRoute: typeof AddTaskRoute
+  AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   ProfileRoute: typeof ProfileRoute
   StatusRoute: typeof StatusRoute
@@ -102,6 +119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-task': {
       id: '/add-task'
       path: '/add-task'
@@ -122,6 +146,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AddTaskRoute: AddTaskRoute,
+  AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   ProfileRoute: ProfileRoute,
   StatusRoute: StatusRoute,

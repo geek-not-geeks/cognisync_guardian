@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, RefreshCw } from "lucide-react";
+import { Check, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { PillGroup } from "@/components/atomic/PillGroup";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { enqueue } from "@/lib/offlineQueue";
 import type {
   Difficulty,
   EffortSize,
@@ -41,6 +46,46 @@ export function OCRReviewDrawer({
     ...DEFAULT_TASK,
     ...initialData,
   });
+  const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  async function handleConfirm() {
+    if (!user) {
+      toast.error("You must be signed in to save tasks.");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      user_id: user.id,
+      title: task.title,
+      raw_text: task.rawText ?? null,
+      effort_size: task.effortSize,
+      difficulty: task.difficulty,
+      deadline: task.deadline ?? null,
+      status: "pending" as const,
+      is_governor_locked: false,
+    };
+
+    try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueue({ kind: "task_insert", payload });
+        toast.success("Saved offline — will sync when back online.");
+      } else {
+        const { error } = await supabase.from("tasks").insert(payload as never);
+        if (error) {
+          await enqueue({ kind: "task_insert", payload });
+          toast.error(`Queued: ${error.message}`);
+        } else {
+          toast.success("Task synced");
+        }
+      }
+      void queryClient.invalidateQueries({ queryKey: ["tasks_count"] });
+      onConfirm?.(task);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -130,11 +175,16 @@ export function OCRReviewDrawer({
               <div className="flex flex-col items-center gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => onConfirm?.(task)}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-mint px-6 py-4 text-base font-semibold text-slate-deep shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed"
+                  onClick={handleConfirm}
+                  disabled={saving}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-mint px-6 py-4 text-base font-semibold text-slate-deep shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed disabled:opacity-60"
                 >
-                  <Check className="h-5 w-5" strokeWidth={2.5} />
-                  Confirm & Sync
+                  {saving ? (
+                    <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} />
+                  ) : (
+                    <Check className="h-5 w-5" strokeWidth={2.5} />
+                  )}
+                  {saving ? "Syncing…" : "Confirm & Sync"}
                 </button>
                 <button
                   type="button"
