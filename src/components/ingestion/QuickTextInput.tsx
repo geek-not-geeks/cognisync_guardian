@@ -3,7 +3,7 @@ import { ArrowLeft, Mic, Sparkles } from "lucide-react";
 
 interface QuickTextInputProps {
   onClose: () => void;
-  onProcess: () => void;
+  onProcess: (text: string) => void;
 }
 
 export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
@@ -11,7 +11,6 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-expand the textarea as the user types.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -20,13 +19,14 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
   }, [text]);
 
   const handleDictation = () => {
-    // Simulate dictation toggle; real Web Speech API integration can be wired later.
+    // Simulate dictation toggle; Web Speech API integration wires later.
     setIsListening((prev) => !prev);
   };
 
   const handleProcess = () => {
-    if (!text.trim()) return;
-    onProcess();
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    onProcess(trimmed);
   };
 
   return (
@@ -35,7 +35,7 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
         <button
           type="button"
           onClick={onClose}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1E293B] shadow-3d-base transition-all active:scale-95 active:shadow-3d-pressed"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-surface shadow-3d-base transition-all active:scale-95 active:shadow-3d-pressed"
           aria-label="Back"
         >
           <ArrowLeft className="h-5 w-5 text-text-secondary" strokeWidth={2} />
@@ -59,7 +59,7 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
             onChange={(e) => setText(e.target.value)}
             rows={8}
             placeholder="e.g., Chemistry lab report due next Thursday, standard effort..."
-            className="w-full flex-1 resize-none rounded-[32px] bg-[#0F172A] p-5 text-base leading-relaxed text-foreground shadow-3d-pressed outline-none placeholder:text-text-secondary focus:ring-2 focus:ring-accent-mint/40"
+            className="w-full flex-1 resize-none rounded-4xl bg-slate-deep p-5 text-base leading-relaxed text-foreground shadow-3d-pressed outline-none placeholder:text-text-secondary focus:ring-2 focus:ring-accent-mint/40"
             style={{ minHeight: "50vh" }}
           />
         </div>
@@ -70,12 +70,12 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
             onClick={handleDictation}
             className={`flex items-center justify-center gap-2 rounded-full px-5 py-4 text-base font-semibold shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed ${
               isListening
-                ? "bg-warning-amber text-[#0F172A]"
-                : "bg-[#1E293B] text-foreground"
+                ? "bg-warning-amber text-slate-deep"
+                : "bg-surface text-foreground"
             }`}
           >
             <Mic
-              className={`h-5 w-5 ${isListening ? "text-[#0F172A]" : "text-text-secondary"}`}
+              className={`h-5 w-5 ${isListening ? "text-slate-deep" : "text-text-secondary"}`}
               strokeWidth={2}
             />
             {isListening ? "Listening..." : "Start Dictation"}
@@ -85,9 +85,9 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
             type="button"
             onClick={handleProcess}
             disabled={!text.trim()}
-            className="flex items-center justify-center gap-2 rounded-full bg-accent-mint px-5 py-4 text-base font-semibold text-[#0F172A] shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed disabled:opacity-40 disabled:active:scale-100"
+            className="flex items-center justify-center gap-2 rounded-full bg-accent-mint px-5 py-4 text-base font-semibold text-slate-deep shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed disabled:opacity-40 disabled:active:scale-100"
           >
-            <Sparkles className="h-5 w-5 text-[#0F172A]" strokeWidth={2} />
+            <Sparkles className="h-5 w-5 text-slate-deep" strokeWidth={2} />
             Process Task
           </button>
         </div>
