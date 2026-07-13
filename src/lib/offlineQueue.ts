@@ -60,20 +60,20 @@ export async function enqueue(entry: Omit<QueueEntry, "id" | "createdAt">) {
 async function executeEntry(entry: QueueEntry): Promise<boolean> {
   switch (entry.kind) {
     case "task_insert": {
-      const { error } = await supabase.from("tasks").insert(entry.payload);
+      const { error } = await supabase.from("tasks").insert(entry.payload as never);
       return !error;
     }
     case "task_toggle": {
       const { error } = await supabase
         .from("tasks")
-        .update({ status: entry.payload.status })
+        .update({ status: entry.payload.status } as never)
         .eq("id", entry.payload.id);
       return !error;
     }
     case "calibration_upsert": {
       const { error } = await supabase
         .from("daily_calibrations")
-        .upsert(entry.payload, { onConflict: "user_id,date" });
+        .upsert(entry.payload as never, { onConflict: "user_id,date" });
       return !error;
     }
   }
