@@ -1,32 +1,32 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, RefreshCw } from "lucide-react";
-
-export type EffortSize = "Quick" | "Standard" | "Deep Work";
-export type Difficulty = "Comfortable" | "Challenging" | "Very Hard";
-
-export interface ParsedTask {
-  title: string;
-  deadline: string;
-  effort: EffortSize;
-  difficulty: Difficulty;
-}
+import { PillGroup } from "@/components/atomic/PillGroup";
+import type {
+  Difficulty,
+  EffortSize,
+  ParsedTaskPayload,
+} from "@/types/task";
 
 interface OCRReviewDrawerProps {
   open: boolean;
   onClose: () => void;
-  onConfirm?: (task: ParsedTask) => void;
+  onConfirm?: (task: ParsedTaskPayload) => void;
   onRetake?: () => void;
-  initial?: Partial<ParsedTask>;
+  initialData?: ParsedTaskPayload;
 }
 
-const EFFORT_OPTIONS: EffortSize[] = ["Quick", "Standard", "Deep Work"];
-const DIFFICULTY_OPTIONS: Difficulty[] = ["Comfortable", "Challenging", "Very Hard"];
+const EFFORT_OPTIONS: readonly EffortSize[] = ["Quick", "Standard", "Deep Work"];
+const DIFFICULTY_OPTIONS: readonly Difficulty[] = [
+  "Comfortable",
+  "Challenging",
+  "Very Hard",
+];
 
-const DEFAULT_TASK: ParsedTask = {
+const DEFAULT_TASK: ParsedTaskPayload = {
   title: "Chemistry Lab Report",
   deadline: "Tomorrow",
-  effort: "Standard",
+  effortSize: "Standard",
   difficulty: "Challenging",
 };
 
@@ -35,9 +35,12 @@ export function OCRReviewDrawer({
   onClose,
   onConfirm,
   onRetake,
-  initial,
+  initialData,
 }: OCRReviewDrawerProps) {
-  const [task, setTask] = useState<ParsedTask>({ ...DEFAULT_TASK, ...initial });
+  const [task, setTask] = useState<ParsedTaskPayload>({
+    ...DEFAULT_TASK,
+    ...initialData,
+  });
 
   return (
     <AnimatePresence>
@@ -68,11 +71,7 @@ export function OCRReviewDrawer({
             onDragEnd={(_, info) => {
               if (info.offset.y > 120 || info.velocity.y > 600) onClose();
             }}
-            className="fixed inset-x-0 bottom-0 z-50 h-[60vh] rounded-t-[32px] bg-[#1E293B] shadow-3d-base"
-            style={{
-              boxShadow:
-                "inset 0 2px 0 rgba(255,255,255,0.08), 0 -12px 40px rgba(0,0,0,0.5)",
-            }}
+            className="fixed inset-x-0 bottom-0 z-50 h-[60vh] rounded-t-4xl bg-surface shadow-3d-base"
           >
             <div
               className="flex h-full flex-col px-6 pt-3"
@@ -97,28 +96,30 @@ export function OCRReviewDrawer({
                   <input
                     value={task.title}
                     onChange={(e) => setTask({ ...task, title: e.target.value })}
-                    className="w-full rounded-2xl bg-[#0F172A] px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none placeholder:text-text-secondary focus:ring-2 focus:ring-accent-mint/40"
+                    className="w-full rounded-2xl bg-slate-deep px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none placeholder:text-text-secondary focus:ring-2 focus:ring-accent-mint/40"
                   />
                 </Field>
 
                 <Field label="Deadline">
                   <input
-                    value={task.deadline}
+                    value={task.deadline ?? ""}
                     onChange={(e) => setTask({ ...task, deadline: e.target.value })}
-                    className="w-full rounded-2xl bg-[#0F172A] px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none placeholder:text-text-secondary focus:ring-2 focus:ring-accent-mint/40"
+                    className="w-full rounded-2xl bg-slate-deep px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none placeholder:text-text-secondary focus:ring-2 focus:ring-accent-mint/40"
                   />
                 </Field>
 
                 <Field label="Effort Size">
                   <PillGroup
+                    ariaLabel="Effort size"
                     options={EFFORT_OPTIONS}
-                    value={task.effort}
-                    onChange={(v) => setTask({ ...task, effort: v })}
+                    value={task.effortSize}
+                    onChange={(v) => setTask({ ...task, effortSize: v })}
                   />
                 </Field>
 
                 <Field label="Difficulty">
                   <PillGroup
+                    ariaLabel="Difficulty"
                     options={DIFFICULTY_OPTIONS}
                     value={task.difficulty}
                     onChange={(v) => setTask({ ...task, difficulty: v })}
@@ -130,7 +131,7 @@ export function OCRReviewDrawer({
                 <button
                   type="button"
                   onClick={() => onConfirm?.(task)}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-mint px-6 py-4 text-base font-semibold text-[#0F172A] shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-mint px-6 py-4 text-base font-semibold text-slate-deep shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed"
                 >
                   <Check className="h-5 w-5" strokeWidth={2.5} />
                   Confirm & Sync
@@ -160,37 +161,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </span>
       {children}
     </label>
-  );
-}
-
-function PillGroup<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly T[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((opt) => {
-        const active = opt === value;
-        return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={`rounded-full px-4 py-2.5 text-sm font-medium transition-all active:scale-95 ${
-              active
-                ? "bg-accent-mint text-[#0F172A] shadow-3d-pressed"
-                : "bg-[#1E293B] text-text-secondary shadow-3d-base hover:text-foreground"
-            }`}
-          >
-            {opt}
-          </button>
-        );
-      })}
-    </div>
   );
 }
