@@ -1,77 +1,63 @@
-# Phase 1 & 2 Architectural Audit — Plan
+## Phase 3: External Supabase Integration
 
-## Scope
-Read-only audit of every existing component + targeted refactors. No new features. Ends with a Gatekeeper Report.
+Wire the app to the pre-deployed Supabase backend. No migrations, no schema changes — strict client-side integration only.
 
-## Important stack note (Step 2 adjustment)
-Project is on **Tailwind v4** (CSS-first, no `tailwind.config.ts`). Tokens live in `src/styles.css` under `@theme` and `@utility`. Most tokens the brief asks for **already exist**: `--color-surface`, `--color-accent-mint`, `--color-warning-amber`, `--color-governor-red`, `--color-text-secondary`, and `@utility shadow-3d-base` / `shadow-3d-pressed`. I will:
-- Add missing tokens: `--color-slate-deep: #0F172A`, `--color-slate-abyss: #020617`, `--radius-4xl` alias for the 32px drawer/card radius (already present).
-- Refactor components to use `bg-surface`, `bg-slate-deep`, `text-text-secondary`, `shadow-3d-base`, `shadow-3d-pressed`, `rounded-4xl` — eliminating every `bg-[#...]`, `rounded-[32px]`, inline `boxShadow` string.
-- I will NOT create `tailwind.config.ts` (v4 does not read it; creating it is an anti-pattern on this stack).
+### 1. Client setup
+- `bun add @supabase/supabase-js`
+- Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` (values provided).
+- Create `src/lib/supabase.ts` — single typed `createClient<Database>()` instance, `persistSession: true`, `autoRefreshToken: true`.
 
-## Step 1 — Directory refactor
-Move files and update all imports (routes + intra-component):
-```
-src/components/atomic/         (new — extract PillGroup, ActionCard, CaptureButton)
-src/components/dashboard/      EnergySandbox.tsx
-src/components/ingestion/      IngestionHub.tsx, QuickTextInput.tsx, BimodalFallback.tsx
-src/components/media/          MediaCapture.tsx
-src/components/modals/         OCRReviewDrawer.tsx
-src/layouts/                   AppShell.tsx
-src/types/                     task.ts
-src/utils/                     mediaCompression.ts
-```
-`Dashboard.tsx` stays at `src/components/Dashboard.tsx` (page composition root) — or move to `src/components/dashboard/Dashboard.tsx`; I'll do the latter for consistency. `PlaceholderPage.tsx` stays where it is (route utility). `src/components/ui/*` (shadcn) untouched.
+### 2. Types
+- Create `src/types/database.types.ts` with a hand-written `Database` interface mapping the three tables (`users`, `daily_calibrations`, `tasks`) with `Row` / `Insert` / `Update` shapes using the enum unions from the directive. Re-export enum unions.
+- Update `src/types/task.ts` to re-use these enum types (no drift).
 
-Update imports in: `src/routes/add-task.tsx`, `src/routes/index.tsx`, `src/routes/dashboard.tsx`, `src/routes/status.tsx`, `src/routes/profile.tsx`, `src/routes/__root.tsx` if applicable, and each moved component's cross-references.
+### 3. Minimal Auth (email + password)
+Required because `tasks.user_id` is RLS-scoped.
+- Create `src/routes/auth.tsx` — public route, single card with tabs for Sign In / Sign Up (email + password). Styled with existing `bg-surface` / `shadow-3d-*` tokens. On success → navigate to `/`.
+- Create `src/hooks/useAuth.ts` — subscribes to `supabase.auth.onAuthStateChange`, exposes `{ user, session, loading }`.
+- Add a lightweight guard inside `AppShell`: if no session and route ≠ `/auth`, redirect to `/auth`. (Avoids restructuring routes under `_authenticated/` this phase.)
+- Add a Sign Out control in the existing Profile route.
+- No `profiles` table is created (backend already owns `users`).
 
-## Step 2 — Token integrity
-- Audit each moved TSX for arbitrary values.
-- Add `--color-slate-deep`, `--color-slate-abyss` to `@theme` in `styles.css`.
-- Replace: `bg-[#1E293B]` → `bg-surface`; `bg-[#0F172A]` → `bg-slate-deep`; `rounded-[32px]` → `rounded-4xl`; inline `boxShadow` on drawer → `shadow-3d-base` (drop the duplicate inset style — already covered by the utility).
-- Confirm global gradient background (already in `@layer base` in `styles.css`) — leave as-is (single source of truth). Remove any redundant gradient from `AppShell`.
+### 4. OCRReviewDrawer — Confirm & Sync
+- Convert `onConfirm` handler to async: insert into `public.tasks` with `{ user_id: session.user.id, title, raw_text, effort_size, difficulty, deadline, status: 'pending', is_governor_locked: false }`.
+- Local `isSaving` state disables the button + shows spinner icon.
+- `sonner` toast on success (`"Task synced"`) and error (message from Supabase error).
+- On success: close drawer, invalidate the tasks query, enqueue via offline queue if `navigator.onLine === false`.
 
-## Step 3 — MediaCapture hardware cleanup
-Extract `mediaCompression.ts`, then in `MediaCapture.tsx`:
-- Add `streamRef` capturing the active `MediaStream` from `react-webcam`'s `onUserMedia`.
-- `useEffect` cleanup: iterate `stream.getTracks()` → `.stop()` on unmount **and** when transitioning to preview state (`useEffect` deps on capture state).
-- Also stop `MediaRecorder` if active, clear `recordTimerRef`/`recordIntervalRef`.
-- Verify `aspect-[9/16]` viewport constraint and 10s recorder cap (already present — confirm and lock).
+### 5. Dashboard — live calibration
+- Replace hardcoded 85% / "Green State" with a TanStack Query:
+  - Key: `["daily_calibrations", userId, today]`
+  - Fetch: `select * from daily_calibrations where user_id=? and date=today order by created_at desc limit 1`.
+- Map `burnout_tier` → ring color + label:
+  - `Green` → `--color-accent-mint`, "Green State"
+  - `Amber` → `--color-warning-amber`, "Amber State"
+  - `Red` → destructive red token, "Red State"
+- Score % derived from `energy_baseline * 10` (fallback 0 if no row today).
+- Loading skeleton uses existing `shadow-3d-base` surface; empty state prompts "Complete morning calibration."
+- Extract the ring into `src/components/dashboard/MacroScoreRing.tsx` accepting `{ tier, score }` so the component boundary matches the directive.
+- The Sleep / Tasks / Energy stat pills also read from the calibration row + a lightweight `count(tasks)` query.
 
-## Step 4 — `src/utils/mediaCompression.ts`
-Move existing `compressToWebP` logic out of `MediaCapture.tsx` into a pure util:
-```ts
-export async function compressToWebP(source: Blob | File, opts?: { maxBytes?: number; maxDimension?: number }): Promise<Blob>
-```
-Uses HTML5 Canvas only, iterative quality/scale loop, guarantees <2MB, returns `image/webp` Blob. No new deps.
+### 6. Optimistic UI + Offline Queue
+- Create `src/lib/offlineQueue.ts`:
+  - Persistent queue in `localStorage` under `cognisync.pending_mutations`.
+  - Entry shape: `{ id, kind: 'task_insert' | 'task_toggle' | 'calibration_upsert', payload, createdAt }`.
+  - `enqueue(entry)` → appends + attempts drain.
+  - `drain()` → iterate FIFO, call the matching Supabase op, remove on success, stop on first failure.
+  - Listens for `window.online` and drains; also drains on client init.
+- Wrap the three mutation surfaces (task insert from drawer, future task complete toggle, calibration save hook) so they:
+  1. Apply the optimistic change to the TanStack Query cache immediately.
+  2. Attempt the network call; on failure or offline, enqueue and keep the optimistic state.
+  3. On drain success, invalidate the affected query keys.
+- A tiny `<OfflineBanner />` in `AppShell` shows "Working offline — N changes pending" when the queue is non-empty.
 
-## Step 5 — Typed drawer
-Create `src/types/task.ts`:
-```ts
-export type EffortSize = 'Quick' | 'Standard' | 'Deep Work';
-export type Difficulty = 'Comfortable' | 'Challenging' | 'Very Hard';
-export interface ParsedTaskPayload {
-  title: string;
-  effortSize: EffortSize;
-  difficulty: Difficulty;
-  rawText?: string;
-  deadline?: string;
-}
-```
-Refactor `OCRReviewDrawer` props to `initialData?: ParsedTaskPayload` (keep existing `open/onClose/onConfirm/onRetake`). `onConfirm(task: ParsedTaskPayload)`. Update `IngestionHub` call sites.
+### 7. Verification
+- `bunx tsgo --noEmit` must pass with all Supabase calls strictly typed via `Database`.
+- Manual smoke: sign up → open Quick Text → confirm → see toast + row in Supabase. Dashboard reflects today's calibration when a row exists.
 
-## Step 6 — Housekeeping
-- **Dead deps scan**: `package.json` currently has no Redux/Axios (already clean). Radix + shadcn UI kit are used by `src/components/ui/*` (kept). I will NOT remove Radix packages — removing them breaks the shadcn `ui/` primitives even if not all are imported today. I'll flag this in the report rather than delete.
-- **Safe-area**: `AppShell` bottom nav already uses `env(safe-area-inset-bottom)`; `OCRReviewDrawer` already uses `calc(env(safe-area-inset-bottom) + 1.5rem)`. Verified — no change needed. Audit `BimodalFallback` (currently centered modal, no bottom dock — n/a).
-- **Z-index / backdrop**: `BimodalFallback` uses `z-50 backdrop-blur-md` — verify no parent creates a stacking context that clips it (renders at document root via `IngestionHub`, so fine). Confirm drawer is `z-50` above backdrop `z-40` (already correct).
+### Files touched
+**Create:** `src/lib/supabase.ts`, `src/lib/offlineQueue.ts`, `src/types/database.types.ts`, `src/hooks/useAuth.ts`, `src/routes/auth.tsx`, `src/components/dashboard/MacroScoreRing.tsx`, `.env`
 
-## Step 7 — Gatekeeper Report
-Deliver a Markdown table (Module / Checkpoint | Initial Status | Action Taken | Final Status) covering all 6 steps, plus a "Pending Blocker Notes" section (expected empty), and conclude with the READY line if all pass. `bunx tsgo --noEmit` will be run to verify.
+**Edit:** `src/types/task.ts`, `src/components/modals/OCRReviewDrawer.tsx`, `src/components/dashboard/Dashboard.tsx`, `src/components/ingestion/IngestionHub.tsx` (pass insert result through), `src/layouts/AppShell.tsx` (auth guard + offline banner), `src/routes/profile.tsx` (sign-out button)
 
-## Files touched (summary)
-- Move: 8 components → domain folders.
-- New: `src/types/task.ts`, `src/utils/mediaCompression.ts`, `src/layouts/AppShell.tsx`, `src/components/atomic/PillGroup.tsx` (extracted).
-- Edit: `src/styles.css` (2 new color tokens), all moved components (token refactor + import fixes), 5 route files (import path updates), `MediaCapture` (stream cleanup + util extraction), `OCRReviewDrawer` (typed props), `IngestionHub` (call site).
-- No package.json changes.
-
-Proceed?
+**Untouched:** `src/styles.css` (`@theme` intact), Tailwind config, all existing 3D tokens, database schema.
