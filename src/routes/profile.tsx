@@ -63,12 +63,13 @@ function ProfilePage() {
       return;
     }
     setSaving(true);
+    const update: Partial<UsersRow> = {
+      display_name: trimmed === "" ? null : trimmed,
+      target_study_hours: hoursNum,
+    };
     const { error } = await supabase
       .from("users")
-      .update({
-        display_name: trimmed === "" ? null : trimmed,
-        target_study_hours: hoursNum,
-      })
+      .update(update)
       .eq("id", userId);
     setSaving(false);
     if (error) {
