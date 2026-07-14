@@ -210,8 +210,8 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     setAsset(null);
     setError(null);
     setRecordElapsed(0);
-    if (mode === "upload") setTimeout(() => fileInputRef.current?.click(), 0);
-  }, [asset, mode]);
+    // Do NOT auto-reopen the file picker — the user re-clicks "Choose file".
+  }, [asset]);
 
   const recordSecondsLeft = Math.ceil((MAX_VIDEO_MS - recordElapsed) / 1000);
 
