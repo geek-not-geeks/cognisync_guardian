@@ -141,8 +141,8 @@ export function IngestionHub() {
       <BimodalFallback
         open={fallbackOpen}
         onRetake={() => {
+          // Just clear fallback state — user can re-initiate capture manually.
           setFallbackOpen(false);
-          setMode("camera");
         }}
       />
     </>
