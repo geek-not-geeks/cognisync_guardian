@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
+import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
+import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import type { DailyCalibrationsRow } from "@/types/database.types";
+
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -11,6 +14,8 @@ function todayISO(): string {
 
 export function Dashboard() {
   const { user } = useAuth();
+  const { isLocked } = useGovernorLockout();
+
   const userId = user?.id ?? null;
   const today = todayISO();
 
@@ -100,12 +105,23 @@ export function Dashboard() {
         </div>
       </div>
 
-      <section>
+      {isLocked && <GovernorLockoutPanel />}
+
+      <section
+        className={
+          isLocked
+            ? "rounded-3xl border-2 border-destructive/70 p-4"
+            : undefined
+        }
+      >
         <h2 className="mb-4 text-lg font-semibold text-foreground">Today's Pacing</h2>
         <p className="text-sm text-text-secondary">
-          Pacing blocks will appear once the Governor schedules today's work.
+          {isLocked
+            ? "Calendar is locked. Only maintenance slots above are available."
+            : "Pacing blocks will appear once the Governor schedules today's work."}
         </p>
       </section>
     </div>
   );
 }
+

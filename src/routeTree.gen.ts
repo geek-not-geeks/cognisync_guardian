@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ParentViewRouteImport } from './routes/parent-view'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AddTaskRouteImport } from './routes/add-task'
@@ -24,6 +25,11 @@ const StatusRoute = StatusRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParentViewRoute = ParentViewRouteImport.update({
+  id: '/parent-view',
+  path: '/parent-view',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/add-task': typeof AddTaskRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/parent-view': typeof ParentViewRoute
   '/profile': typeof ProfileRoute
   '/status': typeof StatusRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/add-task': typeof AddTaskRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/parent-view': typeof ParentViewRoute
   '/profile': typeof ProfileRoute
   '/status': typeof StatusRoute
 }
@@ -69,20 +77,36 @@ export interface FileRoutesById {
   '/add-task': typeof AddTaskRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/parent-view': typeof ParentViewRoute
   '/profile': typeof ProfileRoute
   '/status': typeof StatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/add-task' | '/auth' | '/dashboard' | '/profile' | '/status'
+  fullPaths:
+    | '/'
+    | '/add-task'
+    | '/auth'
+    | '/dashboard'
+    | '/parent-view'
+    | '/profile'
+    | '/status'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/add-task' | '/auth' | '/dashboard' | '/profile' | '/status'
+  to:
+    | '/'
+    | '/add-task'
+    | '/auth'
+    | '/dashboard'
+    | '/parent-view'
+    | '/profile'
+    | '/status'
   id:
     | '__root__'
     | '/'
     | '/add-task'
     | '/auth'
     | '/dashboard'
+    | '/parent-view'
     | '/profile'
     | '/status'
   fileRoutesById: FileRoutesById
@@ -92,6 +116,7 @@ export interface RootRouteChildren {
   AddTaskRoute: typeof AddTaskRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
+  ParentViewRoute: typeof ParentViewRoute
   ProfileRoute: typeof ProfileRoute
   StatusRoute: typeof StatusRoute
 }
@@ -110,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parent-view': {
+      id: '/parent-view'
+      path: '/parent-view'
+      fullPath: '/parent-view'
+      preLoaderRoute: typeof ParentViewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -148,19 +180,10 @@ const rootRouteChildren: RootRouteChildren = {
   AddTaskRoute: AddTaskRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
+  ParentViewRoute: ParentViewRoute,
   ProfileRoute: ProfileRoute,
   StatusRoute: StatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
