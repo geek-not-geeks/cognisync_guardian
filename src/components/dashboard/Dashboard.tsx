@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
+import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
+import { TaskPipeline } from "@/components/dashboard/TaskPipeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import type { DailyCalibrationsRow, UsersRow } from "@/types/database.types";
 
@@ -12,7 +14,6 @@ function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
   if (h < 18) return "Afternoon";
   return "Evening";
 }
-
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -42,20 +43,6 @@ export function Dashboard() {
     },
   });
 
-  const { data: taskCount } = useQuery({
-    queryKey: ["tasks_count", userId, "pending"],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId!)
-        .eq("status", "pending");
-      if (error) throw error;
-      return count ?? 0;
-    },
-  });
-
   const { data: profile } = useQuery({
     queryKey: ["users", userId, "profile"],
     enabled: !!userId,
@@ -72,14 +59,6 @@ export function Dashboard() {
 
   const tier = calibration?.burnout_tier ?? null;
   const score = calibration ? Math.round((calibration.energy_baseline ?? 0) * 10) : 0;
-  const sleep = calibration?.sleep_quality != null ? `${calibration.sleep_quality}/10` : "—";
-  const energyLabel = calibration
-    ? calibration.energy_baseline >= 7
-      ? "High"
-      : calibration.energy_baseline >= 4
-        ? "Steady"
-        : "Low"
-    : "—";
 
   const firstName = profile?.display_name?.split(" ")[0] || "Scholar";
   const greeting = greetingFor(new Date());
@@ -110,20 +89,13 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-full bg-surface px-2 py-4 text-center shadow-3d-base">
-          <p className="text-[10px] uppercase tracking-wider text-text-secondary">Sleep</p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">{sleep}</p>
-        </div>
-        <div className="rounded-full bg-surface px-2 py-4 text-center shadow-3d-base">
-          <p className="text-[10px] uppercase tracking-wider text-text-secondary">Tasks</p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground">{taskCount ?? 0}</p>
-        </div>
-        <div className="rounded-full bg-surface px-2 py-4 text-center shadow-3d-base">
-          <p className="text-[10px] uppercase tracking-wider text-text-secondary">Energy</p>
-          <p className="mt-0.5 text-sm font-semibold text-accent-mint">{energyLabel}</p>
-        </div>
-      </div>
+      {userId && (
+        <BiometricsCard
+          userId={userId}
+          date={today}
+          calibration={calibration ?? null}
+        />
+      )}
 
       {isLocked && <GovernorLockoutPanel />}
 
@@ -135,13 +107,16 @@ export function Dashboard() {
         }
       >
         <h2 className="mb-4 text-lg font-semibold text-foreground">Today's Pacing</h2>
-        <p className="text-sm text-text-secondary">
-          {isLocked
-            ? "Calendar is locked. Only maintenance slots above are available."
-            : "Pacing blocks will appear once the Governor schedules today's work."}
-        </p>
+        {isLocked ? (
+          <p className="text-sm text-text-secondary">
+            Calendar is locked. Only maintenance slots above are available.
+          </p>
+        ) : userId ? (
+          <TaskPipeline userId={userId} />
+        ) : null}
       </section>
     </div>
   );
 }
+
 
