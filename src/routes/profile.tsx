@@ -69,7 +69,7 @@ function ProfilePage() {
     };
     const { error } = await supabase
       .from("users")
-      .update(update)
+      .update(update as never)
       .eq("id", userId);
     setSaving(false);
     if (error) {
