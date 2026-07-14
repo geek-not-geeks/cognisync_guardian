@@ -22,8 +22,14 @@ const STATUS_CONFIG = {
 type EnergyLevel = keyof typeof STATUS_CONFIG;
 
 export function EnergySandbox() {
+  const { isLocked } = useGovernorLockout();
   const [level, setLevel] = useState<EnergyLevel>(3);
+  useEffect(() => {
+    if (isLocked) setLevel(1);
+  }, [isLocked]);
   const status = STATUS_CONFIG[level];
+
+
 
   return (
     <div className="rounded-4xl bg-surface p-6 shadow-3d-base">
