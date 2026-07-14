@@ -32,12 +32,23 @@ export function EnergySandbox() {
 
 
   return (
-    <div className="rounded-4xl bg-surface p-6 shadow-3d-base">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-foreground">Energy Sandbox</h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Slide to see how your energy level reshapes the day.
-        </p>
+    <div
+      className={`rounded-4xl bg-surface p-6 shadow-3d-base ${
+        isLocked ? "border-2 border-destructive/70" : ""
+      }`}
+    >
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Energy Sandbox</h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Slide to see how your energy level reshapes the day.
+          </p>
+        </div>
+        {isLocked && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-3 py-1 text-xs font-semibold text-destructive shadow-3d-base">
+            <ShieldAlert className="h-3.5 w-3.5" /> Governor Lockout Active
+          </span>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -56,11 +67,13 @@ export function EnergySandbox() {
             min={1}
             max={3}
             step={1}
-            defaultValue={level}
+            value={level}
+            disabled={isLocked}
             onInput={(e) => setLevel(Number(e.currentTarget.value) as EnergyLevel)}
-            className="w-full accent-accent-mint"
+            className="w-full accent-accent-mint disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
+
           <div className="mt-2 flex justify-between text-xs text-text-secondary">
             <span>1</span>
             <span>2</span>
