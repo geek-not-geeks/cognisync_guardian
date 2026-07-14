@@ -14,6 +14,8 @@ function todayISO(): string {
 
 export function Dashboard() {
   const { user } = useAuth();
+  const { isLocked } = useGovernorLockout();
+
   const userId = user?.id ?? null;
   const today = todayISO();
 
