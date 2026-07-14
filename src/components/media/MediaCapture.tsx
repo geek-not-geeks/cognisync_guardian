@@ -372,12 +372,28 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
             </button>
             <button
               type="button"
-              onClick={() => onConfirm?.(asset)}
+              onClick={async () => {
+                try {
+                  // PDPL: strip EXIF (GPS, camera serial, timestamps) before
+                  // any downstream OCR / LLM transmission.
+                  let outgoing = asset;
+                  if (asset.kind === "image" && asset.blob) {
+                    const stripped = await sanitizeImageMetadata(asset.blob);
+                    outgoing = { ...asset, blob: stripped, sizeBytes: stripped.size };
+                  }
+                  stopMediaTracks();
+                  onConfirm?.(outgoing);
+                } catch (e) {
+                  stopMediaTracks();
+                  setError(e instanceof Error ? e.message : "Handoff failed");
+                }
+              }}
               aria-label="Confirm"
               className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-mint text-slate-deep shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
             >
               <Check className="h-9 w-9" strokeWidth={2.5} />
             </button>
+
           </>
         )}
       </div>
