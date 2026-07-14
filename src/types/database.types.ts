@@ -14,6 +14,8 @@ export interface UsersRow {
   role: UserRole;
   parent_id: string | null;
   timezone: string | null;
+  display_name: string | null;
+  target_study_hours: number | null;
 }
 
 export interface DailyCalibrationsRow {

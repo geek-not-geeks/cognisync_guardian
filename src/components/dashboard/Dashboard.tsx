@@ -1,11 +1,17 @@
-import { User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import type { DailyCalibrationsRow } from "@/types/database.types";
+import type { DailyCalibrationsRow, UsersRow } from "@/types/database.types";
+
+function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
+  const h = date.getHours();
+  if (h < 12) return "Morning";
+  if (h < 18) return "Afternoon";
+  return "Evening";
+}
 
 
 function todayISO(): string {
@@ -50,6 +56,20 @@ export function Dashboard() {
     },
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ["users", userId, "profile"],
+    enabled: !!userId,
+    queryFn: async (): Promise<Pick<UsersRow, "display_name"> | null> => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("display_name")
+        .eq("id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as Pick<UsersRow, "display_name"> | null) ?? null;
+    },
+  });
+
   const tier = calibration?.burnout_tier ?? null;
   const score = calibration ? Math.round((calibration.energy_baseline ?? 0) * 10) : 0;
   const sleep = calibration?.sleep_quality != null ? `${calibration.sleep_quality}/10` : "—";
@@ -61,18 +81,18 @@ export function Dashboard() {
         : "Low"
     : "—";
 
+  const firstName = profile?.display_name?.split(" ")[0] || "Scholar";
+  const greeting = greetingFor(new Date());
+
   return (
     <div className="space-y-6 p-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">
-            CogniSync
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-foreground">Morning</h1>
-        </div>
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface shadow-3d-base">
-          <User className="h-7 w-7 text-text-secondary" strokeWidth={2} />
-        </div>
+      <header>
+        <p className="text-xs uppercase tracking-[0.18em] text-text-secondary">
+          CogniSync
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold text-foreground">
+          {greeting}, {firstName}
+        </h1>
       </header>
 
       <div className="rounded-3xl bg-surface p-6 shadow-3d-base">
