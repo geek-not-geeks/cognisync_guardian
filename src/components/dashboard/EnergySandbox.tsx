@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { ShieldAlert } from "lucide-react";
+import { useGovernorLockout } from "@/hooks/useGovernorLockout";
+
 
 const STATUS_CONFIG = {
   1: {
