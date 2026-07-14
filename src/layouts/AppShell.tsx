@@ -1,24 +1,38 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Home, PlusCircle, Activity, User, WifiOff, type LucideIcon } from "lucide-react";
+import { Home, PlusCircle, Activity, User, WifiOff, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import { pendingCount, subscribeQueue } from "@/lib/offlineQueue";
 
+type NavPath = "/" | "/add-task" | "/status" | "/profile" | "/parent-view";
+
 interface NavItem {
-  to: "/" | "/add-task" | "/status" | "/profile";
+  to: NavPath;
   label: string;
   icon: LucideIcon;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const STUDENT_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/add-task", label: "Add Task", icon: PlusCircle },
   { to: "/status", label: "Status", icon: Activity },
   { to: "/profile", label: "Profile", icon: User },
 ];
 
+const PARENT_NAV: NavItem[] = [
+  { to: "/parent-view", label: "Parent", icon: Users },
+  { to: "/profile", label: "Profile", icon: User },
+];
+
+const PARENT_ALLOWED: NavPath[] = ["/parent-view", "/profile"];
+const STUDENT_BLOCKED: NavPath[] = ["/parent-view"];
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
+  const { role, loading: roleLoading } = useUserRole();
+  const { isLocked } = useGovernorLockout();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -29,6 +43,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [loading, session, location.pathname, navigate]);
 
+  useEffect(() => {
+    if (!session || roleLoading || !role) return;
+    const path = location.pathname as NavPath;
+    if (role === "parent" && !PARENT_ALLOWED.includes(path)) {
+      void navigate({ to: "/parent-view" });
+    } else if (role === "student" && STUDENT_BLOCKED.includes(path)) {
+      void navigate({ to: "/" });
+    }
+  }, [role, roleLoading, session, location.pathname, navigate]);
+
   if (loading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-text-secondary">
@@ -37,11 +61,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
+  const navItems = role === "parent" ? PARENT_NAV : STUDENT_NAV;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <OfflineBanner />
       <main className="mx-auto max-w-2xl px-5 pb-24 pt-6">{children}</main>
-      <BottomNav />
+      <BottomNav items={navItems} lockAddTask={role !== "parent" && isLocked} />
     </div>
   );
 }
@@ -77,7 +103,7 @@ function OfflineBanner() {
   );
 }
 
-function BottomNav() {
+function BottomNav({ items, lockAddTask }: { items: NavItem[]; lockAddTask: boolean }) {
   return (
     <nav
       aria-label="Primary"
@@ -85,19 +111,28 @@ function BottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto flex max-w-2xl items-stretch justify-between px-2">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <li key={to} className="flex-1">
-            <Link
-              to={to}
-              aria-label={label}
-              className="group flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium text-text-secondary transition-colors data-[status=active]:text-accent-mint"
-              activeProps={{ className: "text-accent-mint" }}
-            >
-              <Icon className="h-5 w-5" strokeWidth={2} />
-              <span>{label}</span>
-            </Link>
-          </li>
-        ))}
+        {items.map(({ to, label, icon: Icon }) => {
+          const disabled = lockAddTask && to === "/add-task";
+          return (
+            <li key={to} className="flex-1">
+              <Link
+                to={to}
+                aria-label={label}
+                aria-disabled={disabled}
+                onClick={(e) => {
+                  if (disabled) e.preventDefault();
+                }}
+                className={`group flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium text-text-secondary transition-colors data-[status=active]:text-accent-mint ${
+                  disabled ? "pointer-events-none opacity-40" : ""
+                }`}
+                activeProps={{ className: "text-accent-mint" }}
+              >
+                <Icon className="h-5 w-5" strokeWidth={2} />
+                <span>{label}</span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
