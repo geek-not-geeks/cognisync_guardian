@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Mic, Sparkles } from "lucide-react";
+import { ArrowLeft, Mic, Sparkles, ShieldCheck } from "lucide-react";
+import { sanitizeText, type SanitizeFlag } from "@/utils/privacySanitizer";
+
 
 interface QuickTextInputProps {
   onClose: () => void;
