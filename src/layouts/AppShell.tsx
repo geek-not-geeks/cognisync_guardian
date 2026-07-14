@@ -79,9 +79,9 @@ function BottomNav({ items, lockAddTask }: { items: NavItem[]; lockAddTask: bool
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-surface"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-surface"
     >
+
       <ul className="mx-auto flex max-w-2xl items-stretch justify-between px-2">
         {items.map(({ to, label, icon: Icon }) => {
           const disabled = lockAddTask && to === "/add-task";
