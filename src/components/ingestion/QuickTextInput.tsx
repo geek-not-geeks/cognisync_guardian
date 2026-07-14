@@ -25,11 +25,16 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
     setIsListening((prev) => !prev);
   };
 
+  const [lastFlags, setLastFlags] = useState<SanitizeFlag[]>([]);
+
   const handleProcess = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onProcess(trimmed);
+    const { clean, flagged } = sanitizeText(trimmed);
+    setLastFlags(flagged);
+    onProcess(clean);
   };
+
 
   return (
     <section className="flex h-full flex-col gap-6">
