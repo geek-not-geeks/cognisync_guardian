@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
+import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
+import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import type { DailyCalibrationsRow } from "@/types/database.types";
+
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
