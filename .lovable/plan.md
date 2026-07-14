@@ -1,63 +1,57 @@
-## Phase 3: External Supabase Integration
+## Phase 3 Completion — Anti-Gaming Lock, Parent View, Role Gating
 
-Wire the app to the pre-deployed Supabase backend. No migrations, no schema changes — strict client-side integration only.
+Strict frontend-only. No schema, no `@theme` edits. All new queries strictly typed against `Database`.
 
-### 1. Client setup
-- `bun add @supabase/supabase-js`
-- Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` (values provided).
-- Create `src/lib/supabase.ts` — single typed `createClient<Database>()` instance, `persistSession: true`, `autoRefreshToken: true`.
+### 1. Role resolution (shared)
+- Add `src/hooks/useUserRole.ts` — TanStack Query keyed `["users", userId]`, selects `role, parent_id` from `public.users`. Exposes `{ role, parentId, loading }`.
+- Consumed by `AppShell`, Dashboard, EnergySandbox, and the new Parent view.
 
-### 2. Types
-- Create `src/types/database.types.ts` with a hand-written `Database` interface mapping the three tables (`users`, `daily_calibrations`, `tasks`) with `Row` / `Insert` / `Update` shapes using the enum unions from the directive. Re-export enum unions.
-- Update `src/types/task.ts` to re-use these enum types (no drift).
+### 2. Anti-Gaming Baseline Lock
+- Add `src/hooks/useGovernorLockout.ts`:
+  - Query: last 3 `daily_calibrations` for `userId` ordered by `date desc`, limit 3.
+  - `isLocked = rows.length === 3 && rows.every(r => r.energy_baseline === 1 || r.sleep_quality < 4)`.
+  - Returns `{ isLocked, rows }`.
+- `Dashboard.tsx`:
+  - When `isLocked`: render new `<GovernorLockoutPanel />` above stat pills.
+    - Crimson-bordered "calendar grid" placeholder (`border-2 border-destructive rounded-3xl` on the existing pacing card).
+    - Auto-rendered maintenance slots list: "10-Min Desk Organization", "20-Min Light Review", "Mandatory Sleep Hygiene Window" as `shadow-3d-base` pills.
+  - Pass `disabled` prop through to any Add Task CTA rendered here (currently a nav link only, so also expose lockout via context — see below).
+- `EnergySandbox.tsx`: when `isLocked`, freeze slider at `1`, show Crimson badge "Governor Lockout Active", disable input.
+- `AppShell.tsx`: read `useGovernorLockout`; when locked, apply `aria-disabled` + `pointer-events-none opacity-40` to the `/add-task` bottom-nav item and short-circuit its `Link` to `#`.
+- New component: `src/components/dashboard/GovernorLockoutPanel.tsx`.
 
-### 3. Minimal Auth (email + password)
-Required because `tasks.user_id` is RLS-scoped.
-- Create `src/routes/auth.tsx` — public route, single card with tabs for Sign In / Sign Up (email + password). Styled with existing `bg-surface` / `shadow-3d-*` tokens. On success → navigate to `/`.
-- Create `src/hooks/useAuth.ts` — subscribes to `supabase.auth.onAuthStateChange`, exposes `{ user, session, loading }`.
-- Add a lightweight guard inside `AppShell`: if no session and route ≠ `/auth`, redirect to `/auth`. (Avoids restructuring routes under `_authenticated/` this phase.)
-- Add a Sign Out control in the existing Profile route.
-- No `profiles` table is created (backend already owns `users`).
+### 3. Parent Macro Dashboard `/parent-view`
+- New route `src/routes/parent-view.tsx` under `AppShell`.
+- Fetches (parent-scoped, `tasks` table NEVER touched):
+  - `users` where `parent_id = currentUser.id` → resolve linked student id (assume single student for v1; if multiple, pick first, display name/email from `auth` fallback).
+  - `daily_calibrations` for that student, last 7 days ordered `date desc`.
+- Components under `src/components/parent/`:
+  - `BurnoutPreventionHero.tsx` — big `rounded-4xl bg-surface shadow-3d-base` card; score = `green_days / total_days * 100` (rounded); large numeral + label.
+  - `BiometricTrend.tsx` — lightweight inline SVG dual-line (sleep_quality vs available_study_hours) over 7 days; no chart lib needed.
+  - `SystemStatePill.tsx` — derives current state from most recent row's `burnout_tier`: Green→"Sustainable", Amber→"Load Warning", Red→"Governor Cap Active". Uses existing `--color-accent-mint`, `--color-warning-amber`, destructive token.
+- Empty/loading states use `shadow-3d-base` skeletons.
+- Explicit guard: if `role !== 'parent'`, `throw redirect({ to: '/' })` in `beforeLoad` equivalent (client redirect via `useEffect` since routes aren't under `_authenticated` layout this phase).
 
-### 4. OCRReviewDrawer — Confirm & Sync
-- Convert `onConfirm` handler to async: insert into `public.tasks` with `{ user_id: session.user.id, title, raw_text, effort_size, difficulty, deadline, status: 'pending', is_governor_locked: false }`.
-- Local `isSaving` state disables the button + shows spinner icon.
-- `sonner` toast on success (`"Task synced"`) and error (message from Supabase error).
-- On success: close drawer, invalidate the tasks query, enqueue via offline queue if `navigator.onLine === false`.
+### 4. Role-Based Route Gating in `AppShell`
+- `AppShell` reads `useUserRole()`.
+- Nav item lists:
+  - `student` (default): Dashboard, Add Task, Status, Profile (current behavior).
+  - `parent`: Parent View (`/parent-view`), Profile only.
+- If a `parent` lands on a student route (`/`, `/add-task`, `/status`), redirect to `/parent-view`.
+- If a `student` lands on `/parent-view`, redirect to `/`.
+- Loading role → keep current "Loading…" splash.
 
-### 5. Dashboard — live calibration
-- Replace hardcoded 85% / "Green State" with a TanStack Query:
-  - Key: `["daily_calibrations", userId, today]`
-  - Fetch: `select * from daily_calibrations where user_id=? and date=today order by created_at desc limit 1`.
-- Map `burnout_tier` → ring color + label:
-  - `Green` → `--color-accent-mint`, "Green State"
-  - `Amber` → `--color-warning-amber`, "Amber State"
-  - `Red` → destructive red token, "Red State"
-- Score % derived from `energy_baseline * 10` (fallback 0 if no row today).
-- Loading skeleton uses existing `shadow-3d-base` surface; empty state prompts "Complete morning calibration."
-- Extract the ring into `src/components/dashboard/MacroScoreRing.tsx` accepting `{ tier, score }` so the component boundary matches the directive.
-- The Sleep / Tasks / Energy stat pills also read from the calibration row + a lightweight `count(tasks)` query.
+### 5. Types & typing
+- Extend `src/types/database.types.ts` `UsersRow` usage (already has `role`, `parent_id`) — no change required.
+- All new Supabase calls use `.from("users" | "daily_calibrations")` with `Database` generic; no `any`.
 
-### 6. Optimistic UI + Offline Queue
-- Create `src/lib/offlineQueue.ts`:
-  - Persistent queue in `localStorage` under `cognisync.pending_mutations`.
-  - Entry shape: `{ id, kind: 'task_insert' | 'task_toggle' | 'calibration_upsert', payload, createdAt }`.
-  - `enqueue(entry)` → appends + attempts drain.
-  - `drain()` → iterate FIFO, call the matching Supabase op, remove on success, stop on first failure.
-  - Listens for `window.online` and drains; also drains on client init.
-- Wrap the three mutation surfaces (task insert from drawer, future task complete toggle, calibration save hook) so they:
-  1. Apply the optimistic change to the TanStack Query cache immediately.
-  2. Attempt the network call; on failure or offline, enqueue and keep the optimistic state.
-  3. On drain success, invalidate the affected query keys.
-- A tiny `<OfflineBanner />` in `AppShell` shows "Working offline — N changes pending" when the queue is non-empty.
+### 6. Verification
+- `bunx tsgo --noEmit` must pass.
+- Manual: sign in as student with 3 drained calibrations → lockout UI + disabled Add Task. Sign in as parent → only `/parent-view` + `/profile` reachable; no `tasks` query fires (verify Network tab).
 
-### 7. Verification
-- `bunx tsgo --noEmit` must pass with all Supabase calls strictly typed via `Database`.
-- Manual smoke: sign up → open Quick Text → confirm → see toast + row in Supabase. Dashboard reflects today's calibration when a row exists.
+### Files
+**Create:** `src/hooks/useUserRole.ts`, `src/hooks/useGovernorLockout.ts`, `src/components/dashboard/GovernorLockoutPanel.tsx`, `src/routes/parent-view.tsx`, `src/components/parent/BurnoutPreventionHero.tsx`, `src/components/parent/BiometricTrend.tsx`, `src/components/parent/SystemStatePill.tsx`
 
-### Files touched
-**Create:** `src/lib/supabase.ts`, `src/lib/offlineQueue.ts`, `src/types/database.types.ts`, `src/hooks/useAuth.ts`, `src/routes/auth.tsx`, `src/components/dashboard/MacroScoreRing.tsx`, `.env`
+**Edit:** `src/components/dashboard/Dashboard.tsx`, `src/components/dashboard/EnergySandbox.tsx`, `src/layouts/AppShell.tsx`, `src/routeTree.gen.ts` (auto)
 
-**Edit:** `src/types/task.ts`, `src/components/modals/OCRReviewDrawer.tsx`, `src/components/dashboard/Dashboard.tsx`, `src/components/ingestion/IngestionHub.tsx` (pass insert result through), `src/layouts/AppShell.tsx` (auth guard + offline banner), `src/routes/profile.tsx` (sign-out button)
-
-**Untouched:** `src/styles.css` (`@theme` intact), Tailwind config, all existing 3D tokens, database schema.
+**Untouched:** `src/styles.css`, database schema, `tasks` table access anywhere in parent surface.
