@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Home, PlusCircle, Activity, User, WifiOff, Users, type LucideIcon } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Home, PlusCircle, Activity, User, Users, type LucideIcon } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import { pendingCount, subscribeQueue } from "@/lib/offlineQueue";
+import { NetworkBanner } from "@/components/ui/NetworkBanner";
+
 
 type NavPath = "/" | "/add-task" | "/status" | "/profile" | "/parent-view";
 
