@@ -1,11 +1,17 @@
-import { User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import type { DailyCalibrationsRow } from "@/types/database.types";
+import type { DailyCalibrationsRow, UsersRow } from "@/types/database.types";
+
+function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
+  const h = date.getHours();
+  if (h < 12) return "Morning";
+  if (h < 18) return "Afternoon";
+  return "Evening";
+}
 
 
 function todayISO(): string {
