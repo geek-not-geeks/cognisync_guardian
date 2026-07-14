@@ -85,10 +85,10 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     }
   }, []);
 
-  // Trigger file picker automatically in upload mode.
-  useEffect(() => {
-    if (mode === "upload" && !asset) fileInputRef.current?.click();
-  }, [mode, asset]);
+  // NOTE: file picker is triggered ONLY by explicit user click on the
+  // "Choose file" button below. Do NOT auto-open on mount — the browser
+  // treats a mount-time synthetic click plus a real user click as two
+  // separate open requests, producing the double-dialog bug.
 
   // Kill the live camera the moment we have a preview or leave camera mode.
   useEffect(() => {
