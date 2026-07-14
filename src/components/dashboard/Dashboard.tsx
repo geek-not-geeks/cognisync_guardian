@@ -105,12 +105,23 @@ export function Dashboard() {
         </div>
       </div>
 
-      <section>
+      {isLocked && <GovernorLockoutPanel />}
+
+      <section
+        className={
+          isLocked
+            ? "rounded-3xl border-2 border-destructive/70 p-4"
+            : undefined
+        }
+      >
         <h2 className="mb-4 text-lg font-semibold text-foreground">Today's Pacing</h2>
         <p className="text-sm text-text-secondary">
-          Pacing blocks will appear once the Governor schedules today's work.
+          {isLocked
+            ? "Calendar is locked. Only maintenance slots above are available."
+            : "Pacing blocks will appear once the Governor schedules today's work."}
         </p>
       </section>
     </div>
   );
 }
+
