@@ -82,10 +82,18 @@ export function OCRReviewDrawer({
       }
       void queryClient.invalidateQueries({ queryKey: ["tasks_count"] });
       onConfirm?.(task);
+    } catch (e) {
+      // Malformed response / network JSON parse failure: keep the change,
+      // never crash the shell.
+      await enqueue({ kind: "task_insert", payload });
+      toast.error(
+        `Network issue — queued for retry (${e instanceof Error ? e.message : "unknown"}).`,
+      );
     } finally {
       setSaving(false);
     }
   }
+
 
   return (
     <AnimatePresence>
