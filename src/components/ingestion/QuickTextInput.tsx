@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Mic, Sparkles } from "lucide-react";
+import { ArrowLeft, Mic, Sparkles, ShieldCheck } from "lucide-react";
+import { sanitizeText, type SanitizeFlag } from "@/utils/privacySanitizer";
+
 
 interface QuickTextInputProps {
   onClose: () => void;
@@ -23,11 +25,16 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
     setIsListening((prev) => !prev);
   };
 
+  const [lastFlags, setLastFlags] = useState<SanitizeFlag[]>([]);
+
   const handleProcess = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onProcess(trimmed);
+    const { clean, flagged } = sanitizeText(trimmed);
+    setLastFlags(flagged);
+    onProcess(clean);
   };
+
 
   return (
     <section className="flex h-full flex-col gap-6">
@@ -63,6 +70,25 @@ export function QuickTextInput({ onClose, onProcess }: QuickTextInputProps) {
             style={{ minHeight: "50vh" }}
           />
         </div>
+
+        {lastFlags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-surface p-3 shadow-3d-pressed">
+            <ShieldCheck className="h-4 w-4 text-warning-amber" />
+            <span className="text-xs font-medium text-text-secondary">
+              PDPL redaction — removed:
+            </span>
+            {lastFlags.map((f) => (
+              <span
+                key={f}
+                className="rounded-full bg-warning-amber/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-warning-amber"
+              >
+                {f.replace("_", " ")}
+              </span>
+            ))}
+          </div>
+        )}
+
+
 
         <div className="grid grid-cols-2 gap-4">
           <button
