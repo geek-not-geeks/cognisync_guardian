@@ -167,3 +167,13 @@
     inset 6px 6px 12px rgba(0, 0, 0, 0.5),
     inset -4px -4px 8px rgba(255, 255, 255, 0.05);
 }
+
+/* Capacitor / iOS Dynamic Island + Android gesture bar safe-area padding. */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
