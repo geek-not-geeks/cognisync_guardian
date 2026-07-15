@@ -7,6 +7,7 @@ import { AppShell } from "@/layouts/AppShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import type { UsersRow } from "@/types/database.types";
+import { SecuritySettingsCard } from "@/components/profile/SecuritySettingsCard";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
