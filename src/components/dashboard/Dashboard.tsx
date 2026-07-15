@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
 import { TaskPipeline } from "@/components/dashboard/TaskPipeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import type { DailyCalibrationsRow, UsersRow } from "@/types/database.types";
+import type { DailyCalibrationsRow } from "@/types/database.types";
+
 
 function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
   const h = date.getHours();
