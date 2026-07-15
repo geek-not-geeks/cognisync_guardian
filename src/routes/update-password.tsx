@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { signUpSchema, formatAuthError } from "@/lib/auth";
+import { signUpSchema, authSchema, formatAuthError } from "@/lib/auth";
 
 export const Route = createFileRoute("/update-password")({
   head: () => ({
