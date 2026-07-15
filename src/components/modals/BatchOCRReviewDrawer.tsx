@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PillGroup } from "@/components/atomic/PillGroup";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { parseNaturalDate, sanitizeTaskTitle } from "@/utils/dateParser";
 import type {
   Difficulty,
   EffortSize,
@@ -59,25 +60,31 @@ export function BatchOCRReviewDrawer({
     if (tasks.length === 0) return;
 
     setSaving(true);
-    const prepared = tasks.map((t) => ({
-      user_id: user.id,
-      title: t.title,
-      raw_text: t.rawText ?? null,
-      effort_size: t.effortSize,
-      difficulty: t.difficulty,
-      deadline: t.deadline ?? null,
-      status: "pending" as const,
-      is_governor_locked: false,
-    }));
+    const preparedTasks = tasks.map((t) => {
+      const parsedDeadline = parseNaturalDate(t.deadline || "");
+      const defaultDeadline = new Date(Date.now() + 86_400_000).toISOString();
+      return {
+        user_id: user.id,
+        title: sanitizeTaskTitle(t.title || "Untitled Task"),
+        raw_text: t.rawText ?? null,
+        deadline: parsedDeadline.isoString || defaultDeadline,
+        effort_size: t.effortSize || "Standard",
+        difficulty: t.difficulty || "Challenging",
+        status: "pending" as const,
+        is_governor_locked: false,
+      };
+    });
 
     try {
-      const { error } = await supabase.from("tasks").insert(prepared as never);
+      const { error } = await supabase
+        .from("tasks")
+        .insert(preparedTasks as never);
       if (error) {
         toast.error(error.message);
         setSaving(false);
         return;
       }
-      toast.success(`Synced ${prepared.length} task${prepared.length === 1 ? "" : "s"}.`);
+      toast.success("Tasks securely synchronized to your schedule!");
       void queryClient.invalidateQueries({ queryKey: ["tasks_count"] });
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
       onConfirmed?.();
@@ -141,59 +148,13 @@ export function BatchOCRReviewDrawer({
                 )}
 
                 {tasks.map((task, i) => (
-                  <div
+                  <TaskCard
                     key={i}
-                    className="space-y-4 rounded-3xl bg-slate-deep p-5 shadow-3d-pressed"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        Task {i + 1}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => removeTask(i)}
-                        aria-label={`Remove task ${i + 1}`}
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-governor-red shadow-3d-base active:scale-95 active:shadow-3d-pressed"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <Field label="Title">
-                      <input
-                        value={task.title}
-                        onChange={(e) => updateTask(i, { title: e.target.value })}
-                        className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
-                      />
-                    </Field>
-
-                    <Field label="Deadline">
-                      <input
-                        value={task.deadline ?? ""}
-                        onChange={(e) => updateTask(i, { deadline: e.target.value })}
-                        placeholder="e.g., Tomorrow 5pm"
-                        className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
-                      />
-                    </Field>
-
-                    <Field label="Effort Size">
-                      <PillGroup
-                        ariaLabel="Effort size"
-                        options={EFFORT_OPTIONS}
-                        value={task.effortSize}
-                        onChange={(v) => updateTask(i, { effortSize: v })}
-                      />
-                    </Field>
-
-                    <Field label="Difficulty">
-                      <PillGroup
-                        ariaLabel="Difficulty"
-                        options={DIFFICULTY_OPTIONS}
-                        value={task.difficulty}
-                        onChange={(v) => updateTask(i, { difficulty: v })}
-                      />
-                    </Field>
-                  </div>
+                    index={i}
+                    task={task}
+                    onChange={(patch) => updateTask(i, patch)}
+                    onRemove={() => removeTask(i)}
+                  />
                 ))}
               </div>
 
@@ -219,6 +180,93 @@ export function BatchOCRReviewDrawer({
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+interface TaskCardProps {
+  index: number;
+  task: ParsedTaskPayload;
+  onChange: (patch: Partial<ParsedTaskPayload>) => void;
+  onRemove: () => void;
+}
+
+function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
+  const [deadlineText, setDeadlineText] = useState(task.deadline ?? "");
+
+  useEffect(() => {
+    setDeadlineText(task.deadline ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resolvedDate = useMemo(
+    () => parseNaturalDate(deadlineText),
+    [deadlineText],
+  );
+
+  return (
+    <div className="space-y-4 rounded-3xl bg-slate-deep p-5 shadow-3d-pressed">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+          Task {index + 1}
+        </p>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove task ${index + 1}`}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-governor-red shadow-3d-base active:scale-95 active:shadow-3d-pressed"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <Field label="Title">
+        <input
+          value={task.title}
+          onChange={(e) => onChange({ title: e.target.value })}
+          className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
+        />
+      </Field>
+
+      <Field label="Deadline">
+        <input
+          value={deadlineText}
+          onChange={(e) => {
+            setDeadlineText(e.target.value);
+            onChange({ deadline: e.target.value });
+          }}
+          placeholder="e.g., Tomorrow 5pm, Next Weds at 2"
+          className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
+        />
+        {resolvedDate.formattedLabel && (
+          <span className="mt-2 inline-flex items-center rounded-full bg-accent-mint/15 px-3 py-1 text-xs font-semibold text-accent-mint">
+            {resolvedDate.formattedLabel}
+          </span>
+        )}
+        {deadlineText.trim() && !resolvedDate.date && (
+          <span className="mt-2 inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
+            ⚠️ Unrecognized date format. Defaulting to 24 hours from now.
+          </span>
+        )}
+      </Field>
+
+      <Field label="Effort Size">
+        <PillGroup
+          ariaLabel="Effort size"
+          options={EFFORT_OPTIONS}
+          value={task.effortSize}
+          onChange={(v) => onChange({ effortSize: v })}
+        />
+      </Field>
+
+      <Field label="Difficulty">
+        <PillGroup
+          ariaLabel="Difficulty"
+          options={DIFFICULTY_OPTIONS}
+          value={task.difficulty}
+          onChange={(v) => onChange({ difficulty: v })}
+        />
+      </Field>
+    </div>
   );
 }
 
