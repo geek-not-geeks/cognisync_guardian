@@ -197,19 +197,19 @@ function AuthPage() {
           </button>
 
           {unconfirmedEmail && (
-            <div className="bg-warning-amber/15 text-warning-amber p-3 rounded-2xl text-xs flex items-center justify-between mt-3">
+            <div className="bg-warning-amber/15 text-warning-amber p-4 rounded-2xl text-xs flex items-center justify-between mt-4 border border-warning-amber/30">
               <span className="flex items-center gap-2">
                 <MailWarning className="h-4 w-4 shrink-0" />
-                Email not verified
+                Your email address is not yet verified.
               </span>
               <button
                 type="button"
                 onClick={handleResend}
-                disabled={resending}
+                disabled={resending || cooldown > 0}
                 className="flex items-center gap-1 rounded-full bg-warning-amber/20 px-3 py-1 text-[11px] font-semibold text-warning-amber disabled:opacity-60"
               >
                 {resending && <Loader2 className="h-3 w-3 animate-spin" />}
-                Resend Verification Email
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Verification Email"}
               </button>
             </div>
           )}
