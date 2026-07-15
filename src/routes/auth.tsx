@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { authSchema, formatAuthError } from "@/lib/auth";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -31,23 +32,31 @@ function AuthPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const parsed = authSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid input.");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: parsed.data.email,
+          password: parsed.data.password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
         toast.success("Account created. Check your inbox to verify.");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email: parsed.data.email,
+          password: parsed.data.password,
+        });
         if (error) throw error;
         toast.success("Signed in.");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Authentication failed");
+      toast.error(formatAuthError(err));
     } finally {
       setBusy(false);
     }

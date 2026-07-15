@@ -2,10 +2,11 @@ import { useState } from "react";
 import { MessageSquare, Camera, FileUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { MediaCapture, type CapturedAsset, type MediaCaptureMode } from "@/components/media/MediaCapture";
-import { OCRReviewDrawer } from "@/components/modals/OCRReviewDrawer";
+import { BatchOCRReviewDrawer } from "@/components/modals/BatchOCRReviewDrawer";
 import { QuickTextInput } from "@/components/ingestion/QuickTextInput";
 import { BimodalFallback } from "@/components/ingestion/BimodalFallback";
 import { parseOcr } from "@/lib/ocrParse";
+import { sanitizeImageMetadata } from "@/utils/privacySanitizer";
 import type { ParsedTaskPayload } from "@/types/task";
 
 interface IngestionOption {
@@ -40,7 +41,7 @@ export function IngestionHub() {
   const [mode, setMode] = useState<"quick-text" | MediaCaptureMode | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [initialData, setInitialData] = useState<ParsedTaskPayload | undefined>();
+  const [initialTasks, setInitialTasks] = useState<ParsedTaskPayload[]>([]);
 
   const openReview = () => setReviewOpen(true);
   const closeReview = () => setReviewOpen(false);
@@ -48,9 +49,15 @@ export function IngestionHub() {
   async function handleMediaConfirm(asset: CapturedAsset) {
     setMode(null);
     try {
-      const result = await parseOcr(asset);
+      // PDPL: strip EXIF before any downstream extraction call.
+      let sanitized = asset;
+      if (asset.kind === "image" && asset.blob) {
+        const stripped = await sanitizeImageMetadata(asset.blob);
+        sanitized = { ...asset, blob: stripped, sizeBytes: stripped.size };
+      }
+      const result = await parseOcr(sanitized);
       if (result.ok) {
-        setInitialData(result.payload);
+        setInitialTasks(result.payload);
         openReview();
       } else {
         setFallbackOpen(true);
@@ -66,20 +73,21 @@ export function IngestionHub() {
         <QuickTextInput
           onClose={() => setMode(null)}
           onProcess={(text) => {
-            setInitialData({
-              title: text.slice(0, 80),
-              rawText: text,
-              effortSize: "Standard",
-              difficulty: "Challenging",
-            });
+            setInitialTasks([
+              {
+                title: text.slice(0, 80) || "New Task",
+                rawText: text,
+                effortSize: "Standard",
+                difficulty: "Challenging",
+              },
+            ]);
             openReview();
           }}
         />
-        <OCRReviewDrawer
+        <BatchOCRReviewDrawer
           open={reviewOpen}
           onClose={closeReview}
-          onConfirm={closeReview}
-          initialData={initialData}
+          initialTasks={initialTasks}
         />
       </>
     );
@@ -131,19 +139,15 @@ export function IngestionHub() {
         </div>
       </section>
 
-      <OCRReviewDrawer
+      <BatchOCRReviewDrawer
         open={reviewOpen}
         onClose={closeReview}
-        onConfirm={closeReview}
-        initialData={initialData}
+        initialTasks={initialTasks}
       />
 
       <BimodalFallback
         open={fallbackOpen}
-        onRetake={() => {
-          // Just clear fallback state — user can re-initiate capture manually.
-          setFallbackOpen(false);
-        }}
+        onRetake={() => setFallbackOpen(false)}
       />
     </>
   );
