@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MailWarning } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { authSchema, formatAuthError } from "@/lib/auth";
+import { signInSchema, signUpSchema, formatAuthError } from "@/lib/auth";
+import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -23,6 +24,9 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!loading && session) {
@@ -30,14 +34,19 @@ function AuthPage() {
     }
   }, [loading, session, navigate]);
 
+  const UNCONFIRMED_COPY =
+    "Your email address is not verified. Please check your inbox for the verification link.";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = authSchema.safeParse({ email, password });
+    const schema = mode === "signin" ? signInSchema : signUpSchema;
+    const parsed = schema.safeParse({ email, password });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Invalid input.");
       return;
     }
     setBusy(true);
+    setUnconfirmedEmail(null);
     try {
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
@@ -56,9 +65,34 @@ function AuthPage() {
         toast.success("Signed in.");
       }
     } catch (err) {
-      toast.error(formatAuthError(err));
+      const msg = formatAuthError(err);
+      const code =
+        typeof err === "object" && err && "code" in err
+          ? (err as { code?: unknown }).code
+          : undefined;
+      if (code === "email_not_confirmed" || msg === UNCONFIRMED_COPY) {
+        setUnconfirmedEmail(parsed.data.email);
+      }
+      toast.error(msg);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleResend() {
+    if (!unconfirmedEmail) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: unconfirmedEmail,
+      });
+      if (error) throw error;
+      toast.success("Verification email sent. Please check your inbox.");
+    } catch (err) {
+      toast.error(formatAuthError(err));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -77,7 +111,10 @@ function AuthPage() {
             <button
               key={m}
               type="button"
-              onClick={() => setMode(m)}
+              onClick={() => {
+                setMode(m);
+                setUnconfirmedEmail(null);
+              }}
               className={`rounded-full py-2 text-sm font-medium transition-all ${
                 mode === m
                   ? "bg-surface text-foreground shadow-3d-base"
@@ -109,12 +146,24 @@ function AuthPage() {
             <input
               type="password"
               required
-              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-2xl bg-slate-deep px-4 py-3 text-base text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
             />
           </label>
+
+          {mode === "signin" && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                className="text-xs font-medium text-accent-mint hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={busy}
@@ -123,8 +172,32 @@ function AuthPage() {
             {busy && <Loader2 className="h-5 w-5 animate-spin" />}
             {mode === "signin" ? "Sign In" : "Create Account"}
           </button>
+
+          {unconfirmedEmail && (
+            <div className="bg-warning-amber/15 text-warning-amber p-3 rounded-2xl text-xs flex items-center justify-between mt-3">
+              <span className="flex items-center gap-2">
+                <MailWarning className="h-4 w-4 shrink-0" />
+                Email not verified
+              </span>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="flex items-center gap-1 rounded-full bg-warning-amber/20 px-3 py-1 text-[11px] font-semibold text-warning-amber disabled:opacity-60"
+              >
+                {resending && <Loader2 className="h-3 w-3 animate-spin" />}
+                Resend Verification Email
+              </button>
+            </div>
+          )}
         </form>
       </div>
+
+      <ForgotPasswordModal
+        open={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        defaultEmail={email}
+      />
     </div>
   );
 }
