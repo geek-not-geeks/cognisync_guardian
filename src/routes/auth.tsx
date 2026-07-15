@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, MailWarning } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +27,28 @@ function AuthPage() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  function startCooldown(seconds: number) {
+    setCooldown(seconds);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   useEffect(() => {
     if (!loading && session) {
@@ -80,7 +102,7 @@ function AuthPage() {
   }
 
   async function handleResend() {
-    if (!unconfirmedEmail) return;
+    if (!unconfirmedEmail || cooldown > 0) return;
     setResending(true);
     try {
       const { error } = await supabase.auth.resend({
@@ -88,7 +110,8 @@ function AuthPage() {
         email: unconfirmedEmail,
       });
       if (error) throw error;
-      toast.success("Verification email sent. Please check your inbox.");
+      toast.success("Verification email resent! Please check your inbox.");
+      startCooldown(60);
     } catch (err) {
       toast.error(formatAuthError(err));
     } finally {
@@ -174,19 +197,19 @@ function AuthPage() {
           </button>
 
           {unconfirmedEmail && (
-            <div className="bg-warning-amber/15 text-warning-amber p-3 rounded-2xl text-xs flex items-center justify-between mt-3">
+            <div className="bg-warning-amber/15 text-warning-amber p-4 rounded-2xl text-xs flex items-center justify-between mt-4 border border-warning-amber/30">
               <span className="flex items-center gap-2">
                 <MailWarning className="h-4 w-4 shrink-0" />
-                Email not verified
+                Your email address is not yet verified.
               </span>
               <button
                 type="button"
                 onClick={handleResend}
-                disabled={resending}
+                disabled={resending || cooldown > 0}
                 className="flex items-center gap-1 rounded-full bg-warning-amber/20 px-3 py-1 text-[11px] font-semibold text-warning-amber disabled:opacity-60"
               >
                 {resending && <Loader2 className="h-3 w-3 animate-spin" />}
-                Resend Verification Email
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Verification Email"}
               </button>
             </div>
           )}
