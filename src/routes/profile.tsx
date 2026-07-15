@@ -7,6 +7,7 @@ import { AppShell } from "@/layouts/AppShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import type { UsersRow } from "@/types/database.types";
+import { SecuritySettingsCard } from "@/components/profile/SecuritySettingsCard";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -71,13 +72,22 @@ function ProfilePage() {
       .from("users")
       .update(update as never)
       .eq("id", userId);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error(error.message);
       return;
     }
-    toast.success("Preferences saved");
-    await qc.invalidateQueries({ queryKey: ["users", userId] });
+    // Sync JWT session metadata so auth headers match the relational SSOT.
+    const { error: metaError } = await supabase.auth.updateUser({
+      data: { display_name: trimmed === "" ? null : trimmed },
+    });
+    setSaving(false);
+    if (metaError) {
+      toast.error(metaError.message);
+      return;
+    }
+    toast.success("Profile preferences permanently saved!");
+    await qc.invalidateQueries({ queryKey: ["users"] });
   }
 
   async function handleSignOut() {
@@ -165,7 +175,10 @@ function ProfilePage() {
           </button>
         </form>
 
+        <SecuritySettingsCard />
+
         <button
+
           type="button"
           onClick={handleSignOut}
           className="flex w-full items-center justify-center gap-2 rounded-full bg-surface px-6 py-4 text-base font-semibold text-foreground shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed"
