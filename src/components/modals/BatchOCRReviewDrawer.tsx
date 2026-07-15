@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PillGroup } from "@/components/atomic/PillGroup";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { parseNaturalDate, sanitizeTaskTitle } from "@/utils/dateParser";
+import { parseDefensiveDate, sanitizeTaskTitle } from "@/utils/dateParser";
 import type {
   Difficulty,
   EffortSize,
@@ -61,7 +61,7 @@ export function BatchOCRReviewDrawer({
 
     setSaving(true);
     const preparedTasks = tasks.map((t) => {
-      const parsedDeadline = parseNaturalDate(t.deadline || "");
+      const parsedDeadline = parseDefensiveDate(t.deadline || "");
       const defaultDeadline = new Date(Date.now() + 86_400_000).toISOString();
       return {
         user_id: user.id,
