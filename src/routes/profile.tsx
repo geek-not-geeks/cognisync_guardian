@@ -71,13 +71,22 @@ function ProfilePage() {
       .from("users")
       .update(update as never)
       .eq("id", userId);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error(error.message);
       return;
     }
-    toast.success("Preferences saved");
-    await qc.invalidateQueries({ queryKey: ["users", userId] });
+    // Sync JWT session metadata so auth headers match the relational SSOT.
+    const { error: metaError } = await supabase.auth.updateUser({
+      data: { display_name: trimmed === "" ? null : trimmed },
+    });
+    setSaving(false);
+    if (metaError) {
+      toast.error(metaError.message);
+      return;
+    }
+    toast.success("Profile preferences permanently saved!");
+    await qc.invalidateQueries({ queryKey: ["users"] });
   }
 
   async function handleSignOut() {
