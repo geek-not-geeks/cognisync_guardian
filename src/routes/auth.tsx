@@ -102,7 +102,7 @@ function AuthPage() {
   }
 
   async function handleResend() {
-    if (!unconfirmedEmail) return;
+    if (!unconfirmedEmail || cooldown > 0) return;
     setResending(true);
     try {
       const { error } = await supabase.auth.resend({
@@ -110,7 +110,8 @@ function AuthPage() {
         email: unconfirmedEmail,
       });
       if (error) throw error;
-      toast.success("Verification email sent. Please check your inbox.");
+      toast.success("Verification email resent! Please check your inbox.");
+      startCooldown(60);
     } catch (err) {
       toast.error(formatAuthError(err));
     } finally {
