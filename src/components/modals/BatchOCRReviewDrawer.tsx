@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PillGroup } from "@/components/atomic/PillGroup";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { parseNaturalDate, sanitizeTaskTitle } from "@/utils/dateParser";
+import { parseDefensiveDate, sanitizeTaskTitle } from "@/utils/dateParser";
 import type {
   Difficulty,
   EffortSize,
@@ -61,7 +61,7 @@ export function BatchOCRReviewDrawer({
 
     setSaving(true);
     const preparedTasks = tasks.map((t) => {
-      const parsedDeadline = parseNaturalDate(t.deadline || "");
+      const parsedDeadline = parseDefensiveDate(t.deadline || "");
       const defaultDeadline = new Date(Date.now() + 86_400_000).toISOString();
       return {
         user_id: user.id,
@@ -198,8 +198,8 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const resolvedDate = useMemo(
-    () => parseNaturalDate(deadlineText),
+  const resolved = useMemo(
+    () => parseDefensiveDate(deadlineText),
     [deadlineText],
   );
 
@@ -237,16 +237,36 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
           placeholder="e.g., Tomorrow 5pm, Next Weds at 2"
           className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
         />
-        {resolvedDate.formattedLabel && (
+        {resolved.hasConflict ? (
+          <div className="mt-2 space-y-2 rounded-2xl bg-amber-500/10 p-3 shadow-3d-pressed">
+            <p className="text-xs font-semibold text-amber-400">
+              ⚠️ Contradictory dates detected. Tap to select correct deadline:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {resolved.conflictOptions?.map((opt, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setDeadlineText(opt.label);
+                    onChange({ deadline: opt.label });
+                  }}
+                  className="rounded-lg bg-surface px-2.5 py-1 text-xs font-medium text-foreground shadow-3d-base active:scale-95"
+                >
+                  Use {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : resolved.formattedLabel ? (
           <span className="mt-2 inline-flex items-center rounded-full bg-accent-mint/15 px-3 py-1 text-xs font-semibold text-accent-mint">
-            {resolvedDate.formattedLabel}
+            {resolved.formattedLabel}
           </span>
-        )}
-        {deadlineText.trim() && !resolvedDate.date && (
+        ) : deadlineText.trim() ? (
           <span className="mt-2 inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
-            ⚠️ Unrecognized date format. Defaulting to 24 hours from now.
+            ⚠️ Unrecognized format. Defaulting to 24h from now.
           </span>
-        )}
+        ) : null}
       </Field>
 
       <Field label="Effort Size">
