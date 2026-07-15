@@ -175,7 +175,10 @@ function ProfilePage() {
           </button>
         </form>
 
+        <SecuritySettingsCard />
+
         <button
+
           type="button"
           onClick={handleSignOut}
           className="flex w-full items-center justify-center gap-2 rounded-full bg-surface px-6 py-4 text-base font-semibold text-foreground shadow-3d-base transition-all active:scale-[0.98] active:shadow-3d-pressed"
