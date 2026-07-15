@@ -7,6 +7,7 @@ import { QuickTextInput } from "@/components/ingestion/QuickTextInput";
 import { BimodalFallback } from "@/components/ingestion/BimodalFallback";
 import { parseOcr } from "@/lib/ocrParse";
 import { sanitizeImageMetadata } from "@/utils/privacySanitizer";
+import { extractDateFromTitle } from "@/utils/dateParser";
 import type { ParsedTaskPayload } from "@/types/task";
 
 interface IngestionOption {
@@ -73,10 +74,12 @@ export function IngestionHub() {
         <QuickTextInput
           onClose={() => setMode(null)}
           onProcess={(text) => {
+            const { cleanTitle, extractedDeadline } = extractDateFromTitle(text);
             setInitialTasks([
               {
-                title: text.slice(0, 80) || "New Task",
+                title: (cleanTitle || text).slice(0, 80) || "New Task",
                 rawText: text,
+                deadline: extractedDeadline || "Tomorrow 5pm",
                 effortSize: "Standard",
                 difficulty: "Challenging",
               },
