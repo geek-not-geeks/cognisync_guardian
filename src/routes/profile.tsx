@@ -2,10 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LogOut, Mail, User as UserIcon, Clock } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/layouts/AppShell";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import type { UsersRow } from "@/types/database.types";
 import { SecuritySettingsCard } from "@/components/profile/SecuritySettingsCard";
 
@@ -19,27 +20,11 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
-type ProfileSlice = Pick<UsersRow, "display_name" | "target_study_hours">;
-
 function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const userId = user?.id ?? null;
-
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["users", userId, "profile-edit"],
-    enabled: !!userId,
-    queryFn: async (): Promise<ProfileSlice | null> => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("display_name, target_study_hours")
-        .eq("id", userId!)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as ProfileSlice | null) ?? null;
-    },
-  });
+  const { data: profile, isLoading } = useProfile();
 
   const [displayName, setDisplayName] = useState("");
   const [targetHours, setTargetHours] = useState("");
@@ -49,35 +34,44 @@ function ProfilePage() {
     if (profile) {
       setDisplayName(profile.display_name ?? "");
       setTargetHours(
-        profile.target_study_hours != null ? String(profile.target_study_hours) : "",
+        profile.target_study_hours != null ? String(profile.target_study_hours) : "6",
       );
+    } else if (user) {
+      const metaName = (user.user_metadata as { display_name?: string } | null)?.display_name;
+      setDisplayName(metaName ?? "");
+      setTargetHours("6");
     }
-  }, [profile]);
+  }, [profile, user]);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
-    if (!userId) return;
+    if (!user?.id) return;
+    setSaving(true);
     const trimmed = displayName.trim();
     const hoursNum = targetHours === "" ? null : Number(targetHours);
     if (hoursNum !== null && (Number.isNaN(hoursNum) || hoursNum < 0 || hoursNum > 24)) {
+      setSaving(false);
       toast.error("Study hours must be between 0 and 24");
       return;
     }
-    setSaving(true);
-    const update: Partial<UsersRow> = {
+
+    const upsertRow: Partial<UsersRow> & { id: string } = {
+      id: user.id,
       display_name: trimmed === "" ? null : trimmed,
       target_study_hours: hoursNum,
+      role: profile?.role ?? "student",
+      timezone: profile?.timezone ?? "Asia/Kolkata",
     };
-    const { error } = await supabase
+
+    const { error: dbError } = await supabase
       .from("users")
-      .update(update as never)
-      .eq("id", userId);
-    if (error) {
+      .upsert(upsertRow as never, { onConflict: "id" });
+    if (dbError) {
       setSaving(false);
-      toast.error(error.message);
+      toast.error(dbError.message);
       return;
     }
-    // Sync JWT session metadata so auth headers match the relational SSOT.
+
     const { error: metaError } = await supabase.auth.updateUser({
       data: { display_name: trimmed === "" ? null : trimmed },
     });
@@ -86,9 +80,12 @@ function ProfilePage() {
       toast.error(metaError.message);
       return;
     }
-    toast.success("Profile preferences permanently saved!");
+
+    await qc.invalidateQueries({ queryKey: ["profile"] });
     await qc.invalidateQueries({ queryKey: ["users"] });
+    toast.success("Profile preferences permanently saved!");
   }
+
 
   async function handleSignOut() {
     const { error } = await supabase.auth.signOut();

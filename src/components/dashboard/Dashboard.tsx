@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
 import { TaskPipeline } from "@/components/dashboard/TaskPipeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import type { DailyCalibrationsRow, UsersRow } from "@/types/database.types";
+import type { DailyCalibrationsRow } from "@/types/database.types";
+
 
 function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
   const h = date.getHours();
@@ -43,25 +45,16 @@ export function Dashboard() {
     },
   });
 
-  const { data: profile } = useQuery({
-    queryKey: ["users", userId, "profile"],
-    enabled: !!userId,
-    queryFn: async (): Promise<Pick<UsersRow, "display_name"> | null> => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("display_name")
-        .eq("id", userId!)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as Pick<UsersRow, "display_name"> | null) ?? null;
-    },
-  });
+  const { data: profile } = useProfile();
 
   const tier = calibration?.burnout_tier ?? null;
   const score = calibration ? Math.round((calibration.energy_baseline ?? 0) * 10) : 0;
 
-  const firstName = profile?.display_name?.split(" ")[0] || "Scholar";
+  const metaName = (user?.user_metadata as { display_name?: string } | null)?.display_name;
+  const rawName = profile?.display_name || metaName;
+  const firstName = rawName ? rawName.trim().split(/\s+/)[0] : "Scholar";
   const greeting = greetingFor(new Date());
+
 
   return (
     <div className="space-y-6 p-4">
