@@ -1,10 +1,12 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Home, PlusCircle, Activity, User, Users, type LucideIcon } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import { NetworkBanner } from "@/components/ui/NetworkBanner";
+import { supabase } from "@/lib/supabase";
 
 
 type NavPath = "/" | "/add-task" | "/status" | "/profile" | "/parent-view";
@@ -31,11 +33,26 @@ const PARENT_ALLOWED: NavPath[] = ["/parent-view", "/profile"];
 const STUDENT_BLOCKED: NavPath[] = ["/parent-view"];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, user, loading } = useAuth();
   const { role, loading: roleLoading } = useUserRole();
   const { isLocked } = useGovernorLockout();
   const navigate = useNavigate();
   const location = useLocation();
+  const userId = user?.id ?? null;
+
+  const { data: profileMeta } = useQuery({
+    queryKey: ["users", userId, "onboarding-check"],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("display_name")
+        .eq("id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { display_name: string | null } | null) ?? null;
+    },
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -45,7 +62,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [loading, session, location.pathname, navigate]);
 
   useEffect(() => {
+    if (!session || !profileMeta) return;
+    if (
+      profileMeta.display_name == null &&
+      location.pathname !== "/onboarding" &&
+      location.pathname !== "/auth"
+    ) {
+      void navigate({ to: "/onboarding" });
+    }
+  }, [session, profileMeta, location.pathname, navigate]);
+
+  useEffect(() => {
     if (!session || roleLoading || !role) return;
+    if (location.pathname === "/onboarding") return;
     const path = location.pathname as NavPath;
     if (role === "parent" && !PARENT_ALLOWED.includes(path)) {
       void navigate({ to: "/parent-view" });
