@@ -27,7 +27,14 @@ export function useAuth(): AuthState {
       });
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        // Enterprise Safeguard: force recovery screen before any dashboard redirect
+        if (typeof window !== "undefined" && window.location.pathname !== "/update-password") {
+          window.location.href = "/update-password";
+        }
+        return;
+      }
       setState({
         session,
         user: session?.user ?? null,
