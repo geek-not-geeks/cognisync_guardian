@@ -18,6 +18,7 @@ interface BatchOCRReviewDrawerProps {
   onClose: () => void;
   onConfirmed?: () => void;
   initialTasks: ParsedTaskPayload[];
+  warningMessage?: string | null;
 }
 
 const EFFORT_OPTIONS: readonly EffortSize[] = ["Quick", "Standard", "Deep Work"];
