@@ -18,6 +18,7 @@ interface BatchOCRReviewDrawerProps {
   onClose: () => void;
   onConfirmed?: () => void;
   initialTasks: ParsedTaskPayload[];
+  warningMessage?: string | null;
 }
 
 const EFFORT_OPTIONS: readonly EffortSize[] = ["Quick", "Standard", "Deep Work"];
@@ -32,6 +33,7 @@ export function BatchOCRReviewDrawer({
   onClose,
   onConfirmed,
   initialTasks,
+  warningMessage,
 }: BatchOCRReviewDrawerProps) {
   const [tasks, setTasks] = useState<ParsedTaskPayload[]>(initialTasks);
   const [saving, setSaving] = useState(false);
@@ -139,6 +141,12 @@ export function BatchOCRReviewDrawer({
                   Edit or remove any task before syncing.
                 </p>
               </header>
+
+              {warningMessage && (
+                <div className="mb-3 rounded-2xl bg-warning-amber/15 p-3 text-xs font-semibold text-warning-amber shadow-3d-pressed">
+                  {warningMessage}
+                </div>
+              )}
 
               <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                 {tasks.length === 0 && (
