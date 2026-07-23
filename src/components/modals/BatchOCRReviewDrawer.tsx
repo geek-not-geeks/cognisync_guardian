@@ -33,6 +33,7 @@ export function BatchOCRReviewDrawer({
   onClose,
   onConfirmed,
   initialTasks,
+  warningMessage,
 }: BatchOCRReviewDrawerProps) {
   const [tasks, setTasks] = useState<ParsedTaskPayload[]>(initialTasks);
   const [saving, setSaving] = useState(false);
