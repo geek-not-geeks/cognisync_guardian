@@ -142,6 +142,12 @@ export function BatchOCRReviewDrawer({
                 </p>
               </header>
 
+              {warningMessage && (
+                <div className="mb-3 rounded-2xl bg-warning-amber/15 p-3 text-xs font-semibold text-warning-amber shadow-3d-pressed">
+                  {warningMessage}
+                </div>
+              )}
+
               <div className="flex-1 space-y-4 overflow-y-auto pr-1">
                 {tasks.length === 0 && (
                   <p className="rounded-2xl bg-slate-deep p-6 text-center text-sm text-text-secondary shadow-3d-pressed">
