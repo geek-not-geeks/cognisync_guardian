@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { MessageSquare, Camera, FileUp } from "lucide-react";
+import { MessageSquare, Camera, FileUp, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 import { MediaCapture, type CapturedAsset, type MediaCaptureMode } from "@/components/media/MediaCapture";
 import { BatchOCRReviewDrawer } from "@/components/modals/BatchOCRReviewDrawer";
 import { QuickTextInput } from "@/components/ingestion/QuickTextInput";
 import { BimodalFallback } from "@/components/ingestion/BimodalFallback";
-import { parseOcr } from "@/lib/ocrParse";
+import { parseOcrAsset } from "@/lib/ocrParse";
 import { sanitizeImageMetadata } from "@/utils/privacySanitizer";
 import { extractDateFromTitle } from "@/utils/dateParser";
 import type { ParsedTaskPayload } from "@/types/task";
