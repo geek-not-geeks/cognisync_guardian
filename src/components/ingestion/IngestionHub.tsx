@@ -225,6 +225,7 @@ export function IngestionHub() {
         open={reviewOpen}
         onClose={closeReview}
         initialTasks={initialTasks}
+        warningMessage={drawerWarning}
       />
 
       <BimodalFallback
