@@ -7,7 +7,6 @@ import { BatchOCRReviewDrawer } from "@/components/modals/BatchOCRReviewDrawer";
 import { QuickTextInput } from "@/components/ingestion/QuickTextInput";
 import { BimodalFallback } from "@/components/ingestion/BimodalFallback";
 import { parseOcrAsset } from "@/lib/ocrParse";
-import { sanitizeImageMetadata } from "@/utils/privacySanitizer";
 import { extractDateFromTitle } from "@/utils/dateParser";
 import type { ParsedTaskPayload } from "@/types/task";
 
