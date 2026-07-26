@@ -60,21 +60,13 @@ export function IngestionHub() {
     setMode(null);
     setParsing(true);
     try {
-      // PDPL: strip EXIF only for raster images (PDFs bypass canvas rasterizer).
-      let outgoingBlob: Blob | undefined;
-      let mimeType: string | undefined;
-      if (asset.kind === "image" && asset.blob) {
-        outgoingBlob = await sanitizeImageMetadata(asset.blob);
-        mimeType = outgoingBlob.type || "image/webp";
-      } else if (asset.file) {
-        outgoingBlob = asset.file;
-        mimeType = asset.file.type;
-      } else if (asset.blob) {
-        outgoingBlob = asset.blob;
-        mimeType = asset.blob.type;
-      }
+      // Asset arrives pre-optimized and EXIF-stripped from the media gatekeeper.
+      const result = await parseOcrAsset({
+        base64Data: asset.base64Data,
+        blob: asset.base64Data ? undefined : (asset.blob ?? asset.file),
+        mimeType: asset.mimeType ?? asset.file?.type ?? asset.blob?.type,
+      });
 
-      const result = await parseOcrAsset({ blob: outgoingBlob, mimeType });
 
       if (result.ok && result.payload) {
         setInitialTasks(result.payload);
