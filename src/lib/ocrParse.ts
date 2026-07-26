@@ -11,11 +11,14 @@ export interface ParseResult {
 export interface ParseAssetInput {
   /** Sanitized image/PDF blob to transmit (post-EXIF-strip). */
   blob?: Blob;
+  /** Pre-optimized clean Base64 payload (no data-URI prefix). Takes priority over `blob`. */
+  base64Data?: string;
   /** Explicit MIME type override (else derived from blob). */
   mimeType?: string;
   /** Raw text ingestion path. */
   rawText?: string;
 }
+
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
