@@ -328,11 +328,23 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
         </div>
       )}
 
+      {busy && (
+        <div className="mx-auto flex w-full max-w-md items-center gap-4 rounded-4xl bg-surface p-5 shadow-3d-pressed">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-deep shadow-3d-base">
+            <Loader2 className="h-5 w-5 animate-spin text-accent-mint" strokeWidth={2.5} />
+          </div>
+          <p className="text-sm font-medium text-foreground">
+            Optimizing payload for secure AI extraction...
+          </p>
+        </div>
+      )}
+
       {asset?.sizeBytes != null && asset.kind === "image" && (
         <p className="text-center text-xs text-text-secondary">
           Compressed to {(asset.sizeBytes / 1024).toFixed(0)} KB · WebP
         </p>
       )}
+
 
       {error && (
         <p className="rounded-2xl bg-surface p-4 text-sm text-governor-red shadow-3d-pressed">
