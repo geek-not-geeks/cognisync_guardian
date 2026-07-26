@@ -128,15 +128,29 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     setError(null);
     setBusy(true);
     try {
-      const blob = await compressToWebP(shot);
-      const url = URL.createObjectURL(blob);
-      setAsset({ kind: "image", previewUrl: url, blob, sizeBytes: blob.size, name: "capture.webp" });
+      const rawBlob = await (await fetch(shot)).blob();
+      const rawFile = new File([rawBlob], "capture.webp", {
+        type: rawBlob.type || "image/webp",
+      });
+      const optimized = await optimizeAndSanitizeAsset(rawFile);
+      const url = URL.createObjectURL(optimized.file);
+      setAsset({
+        kind: "image",
+        previewUrl: url,
+        blob: optimized.file,
+        file: optimized.file,
+        base64Data: optimized.base64Data,
+        mimeType: optimized.mimeType,
+        sizeBytes: optimized.sizeBytes,
+        name: optimized.file.name,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Compression failed");
     } finally {
       setBusy(false);
     }
   }, []);
+
 
   const stopRecording = useCallback(() => {
     if (recordTimerRef.current) {
