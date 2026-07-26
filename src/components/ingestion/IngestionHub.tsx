@@ -75,14 +75,16 @@ export function IngestionHub() {
 
       if (result.reason === "low_confidence" && result.payload && result.payload.length > 0) {
         setInitialTasks(result.payload);
-        openReview("⚠️ Low scan clarity. Please verify extracted titles and dates below.");
+        openReview(
+          `⚠️ Low scan clarity (${Math.round((result.confidence || 0) * 100)}%). Please verify extracted titles and deadlines below.`,
+        );
         return;
       }
 
-      toast.error("Could not read syllabus automatically. Please select quadrants or enter manually.");
+      toast.error(result.reason || "AI engine could not identify structured tasks.");
       setFallbackOpen(true);
-    } catch {
-      toast.error("Could not read syllabus automatically. Please select quadrants or enter manually.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Client-side extraction bridge failed.");
       setFallbackOpen(true);
     } finally {
       setParsing(false);
