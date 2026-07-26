@@ -20,9 +20,13 @@ export interface CapturedAsset {
   previewUrl: string;
   blob?: Blob;
   file?: File;
+  /** Clean Base64 payload (no data-URI prefix) produced by the pre-flight optimizer. */
+  base64Data?: string;
+  mimeType?: string;
   sizeBytes?: number;
   name?: string;
 }
+
 
 // PDPL/enterprise gate: strict allow-list, 10 MB cap.
 const ALLOWED_MIME: readonly string[] = [
