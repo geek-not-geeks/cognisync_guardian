@@ -44,9 +44,13 @@ export function BatchOCRReviewDrawer({
     if (open) setTasks(initialTasks);
   }, [open, initialTasks]);
 
-  function updateTask(index: number, patch: Partial<ParsedTaskPayload>) {
+  function handleUpdateTask<K extends keyof ParsedTaskPayload>(
+    index: number,
+    field: K,
+    value: ParsedTaskPayload[K],
+  ) {
     setTasks((prev) =>
-      prev.map((t, i) => (i === index ? { ...t, ...patch } : t)),
+      prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)),
     );
   }
 
@@ -160,7 +164,7 @@ export function BatchOCRReviewDrawer({
                     key={i}
                     index={i}
                     task={task}
-                    onChange={(patch) => updateTask(i, patch)}
+                    onUpdate={handleUpdateTask}
                     onRemove={() => removeTask(i)}
                   />
                 ))}
@@ -194,17 +198,16 @@ export function BatchOCRReviewDrawer({
 interface TaskCardProps {
   index: number;
   task: ParsedTaskPayload;
-  onChange: (patch: Partial<ParsedTaskPayload>) => void;
+  onUpdate: <K extends keyof ParsedTaskPayload>(
+    index: number,
+    field: K,
+    value: ParsedTaskPayload[K],
+  ) => void;
   onRemove: () => void;
 }
 
-function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
-  const [deadlineText, setDeadlineText] = useState(task.deadline ?? "");
-
-  useEffect(() => {
-    setDeadlineText(task.deadline ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+function TaskCard({ index, task, onUpdate, onRemove }: TaskCardProps) {
+  const deadlineText = task.deadline ?? "";
 
   const resolved = useMemo(
     () => parseDefensiveDate(deadlineText),
@@ -230,7 +233,7 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
       <Field label="Title">
         <input
           value={task.title}
-          onChange={(e) => onChange({ title: e.target.value })}
+          onChange={(e) => onUpdate(index, "title", e.target.value)}
           className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
         />
       </Field>
@@ -238,16 +241,13 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
       <Field label="Deadline">
         <input
           value={deadlineText}
-          onChange={(e) => {
-            setDeadlineText(e.target.value);
-            onChange({ deadline: e.target.value });
-          }}
+          onChange={(e) => onUpdate(index, "deadline", e.target.value)}
           placeholder="e.g., Tomorrow 5pm, Next Weds at 2"
           className="w-full rounded-2xl bg-surface px-4 py-3 text-base font-medium text-foreground shadow-3d-pressed outline-none focus:ring-2 focus:ring-accent-mint/40"
         />
         {resolved.hasConflict ? (
-          <div className="mt-2 space-y-2 rounded-2xl bg-amber-500/10 p-3 shadow-3d-pressed">
-            <p className="text-xs font-semibold text-amber-400">
+          <div className="mt-2 space-y-2 rounded-2xl bg-warning-amber/10 p-3 shadow-3d-pressed">
+            <p className="text-xs font-semibold text-warning-amber">
               ⚠️ Contradictory dates detected. Tap to select correct deadline:
             </p>
             <div className="flex flex-wrap gap-2">
@@ -255,10 +255,7 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => {
-                    setDeadlineText(opt.label);
-                    onChange({ deadline: opt.label });
-                  }}
+                  onClick={() => onUpdate(index, "deadline", opt.label)}
                   className="rounded-lg bg-surface px-2.5 py-1 text-xs font-medium text-foreground shadow-3d-base active:scale-95"
                 >
                   Use {opt.label}
@@ -271,7 +268,7 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
             {resolved.formattedLabel}
           </span>
         ) : deadlineText.trim() ? (
-          <span className="mt-2 inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-400">
+          <span className="mt-2 inline-flex items-center rounded-full bg-warning-amber/15 px-3 py-1 text-xs font-semibold text-warning-amber">
             ⚠️ Unrecognized format. Defaulting to 24h from now.
           </span>
         ) : null}
@@ -282,7 +279,7 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
           ariaLabel="Effort size"
           options={EFFORT_OPTIONS}
           value={task.effortSize}
-          onChange={(v) => onChange({ effortSize: v })}
+          onChange={(v) => onUpdate(index, "effortSize", v)}
         />
       </Field>
 
@@ -291,7 +288,7 @@ function TaskCard({ index, task, onChange, onRemove }: TaskCardProps) {
           ariaLabel="Difficulty"
           options={DIFFICULTY_OPTIONS}
           value={task.difficulty}
-          onChange={(v) => onChange({ difficulty: v })}
+          onChange={(v) => onUpdate(index, "difficulty", v)}
         />
       </Field>
     </div>
