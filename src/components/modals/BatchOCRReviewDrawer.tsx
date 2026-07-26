@@ -44,9 +44,13 @@ export function BatchOCRReviewDrawer({
     if (open) setTasks(initialTasks);
   }, [open, initialTasks]);
 
-  function updateTask(index: number, patch: Partial<ParsedTaskPayload>) {
+  function handleUpdateTask<K extends keyof ParsedTaskPayload>(
+    index: number,
+    field: K,
+    value: ParsedTaskPayload[K],
+  ) {
     setTasks((prev) =>
-      prev.map((t, i) => (i === index ? { ...t, ...patch } : t)),
+      prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)),
     );
   }
 
