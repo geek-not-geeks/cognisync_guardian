@@ -103,7 +103,7 @@ export function IngestionHub() {
       }
       if (result.reason === "low_confidence" && result.payload && result.payload.length > 0) {
         setInitialTasks(result.payload);
-        openReview("⚠️ Low extraction confidence. Please verify below.");
+        openReview(`⚠️ Low extraction confidence (${Math.round((result.confidence || 0) * 100)}%). Please verify below.`);
         return;
       }
       // Graceful local fallback: single editable card seeded from the raw text.
