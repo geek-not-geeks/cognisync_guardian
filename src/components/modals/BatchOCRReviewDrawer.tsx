@@ -164,7 +164,7 @@ export function BatchOCRReviewDrawer({
                     key={i}
                     index={i}
                     task={task}
-                    onChange={(patch) => updateTask(i, patch)}
+                    onUpdate={handleUpdateTask}
                     onRemove={() => removeTask(i)}
                   />
                 ))}
