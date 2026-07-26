@@ -28,6 +28,19 @@ const TASK_SCHEMA = {
   required: ["tasks", "confidence"],
 };
 
+const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
+const LEGACY_MODEL_ALIASES: Record<string, string> = {
+  "gemini-1.5-flash": DEFAULT_GEMINI_MODEL,
+  "models/gemini-1.5-flash": DEFAULT_GEMINI_MODEL,
+};
+
+function resolveGeminiModel() {
+  const configuredModel = Deno.env.get("GEMINI_MODEL")?.trim();
+  if (!configuredModel) return DEFAULT_GEMINI_MODEL;
+
+  return LEGACY_MODEL_ALIASES[configuredModel] ?? configuredModel.replace(/^models\//, "");
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -57,9 +70,12 @@ serve(async (req: Request) => {
       });
     }
 
-    const apiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("OPENAI_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      throw new Error("Missing server AI configuration credentials.");
+      return new Response(
+        JSON.stringify({ ok: false, reason: "Missing GEMINI_API_KEY edge function secret." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const promptInstructions = "You are an expert academic executive assistant. Analyze this syllabus, whiteboard scan, or raw text. Extract all distinct homework assignments, exams, or study tasks into structured action items. Clamp titles to 200 characters. If deadlines are omitted, leave deadline empty.";
@@ -78,7 +94,7 @@ serve(async (req: Request) => {
       contents.push({ text: `Raw Text to Parse: ${rawText}` });
     }
 
-    const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
+    const model = resolveGeminiModel();
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
