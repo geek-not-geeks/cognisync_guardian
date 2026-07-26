@@ -94,19 +94,30 @@ serve(async (req: Request) => {
 
     if (!aiResponse.ok) {
       const errBody = await aiResponse.text();
-      throw new Error(`AI Gateway Error: ${errBody}`);
+      return new Response(
+        JSON.stringify({ ok: false, reason: `AI Gateway Error: ${errBody}` }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const aiData = await aiResponse.json();
-    const rawJsonString = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    const parsedResult = JSON.parse(rawJsonString || '{"tasks":[], "confidence": 0}');
+    let parsedResult: { tasks?: unknown; confidence?: number } = {};
+    try {
+      const aiData = await aiResponse.json();
+      const rawJsonString = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+      parsedResult = JSON.parse(rawJsonString || '{"tasks":[],"confidence":0}');
+    } catch (_parseErr) {
+      return new Response(
+        JSON.stringify({ ok: false, reason: "Malformed AI payload — could not parse structured JSON." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const tasks = Array.isArray(parsedResult.tasks) ? parsedResult.tasks : [];
+    const confidence =
+      typeof parsedResult.confidence === "number" ? parsedResult.confidence : 0;
 
     return new Response(
-      JSON.stringify({
-        ok: true,
-        payload: parsedResult.tasks,
-        confidence: parsedResult.confidence,
-      }),
+      JSON.stringify({ ok: true, payload: tasks, confidence }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
