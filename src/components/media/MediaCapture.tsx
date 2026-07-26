@@ -28,14 +28,6 @@ export interface CapturedAsset {
 }
 
 
-// PDPL/enterprise gate: strict allow-list, 10 MB cap.
-const ALLOWED_MIME: readonly string[] = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-];
-const MAX_BYTES = 10 * 1024 * 1024;
 // 10 s hard cap on video recordings.
 const MAX_VIDEO_MS = 10_000;
 
