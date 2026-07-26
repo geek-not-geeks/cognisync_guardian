@@ -11,11 +11,14 @@ export interface ParseResult {
 export interface ParseAssetInput {
   /** Sanitized image/PDF blob to transmit (post-EXIF-strip). */
   blob?: Blob;
+  /** Pre-optimized clean Base64 payload (no data-URI prefix). Takes priority over `blob`. */
+  base64Data?: string;
   /** Explicit MIME type override (else derived from blob). */
   mimeType?: string;
   /** Raw text ingestion path. */
   rawText?: string;
 }
+
 
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -35,15 +38,16 @@ export const CONFIDENCE_THRESHOLD = 0.7;
  */
 export async function parseOcrAsset(asset: ParseAssetInput): Promise<ParseResult> {
   try {
-    let imageBase64: string | undefined;
+    let imageBase64: string | undefined = asset.base64Data;
     let mimeType: string | undefined = asset.mimeType;
 
-    if (asset.blob) {
+    if (!imageBase64 && asset.blob) {
       mimeType = mimeType ?? asset.blob.type;
       const dataUrl = await blobToDataUrl(asset.blob);
       // Strip the `data:<mime>;base64,` prefix so the gateway receives raw base64.
       imageBase64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
     }
+
 
     const { data, error } = await supabase.functions.invoke("parse-syllabus", {
       body: { imageBase64, rawText: asset.rawText, mimeType },

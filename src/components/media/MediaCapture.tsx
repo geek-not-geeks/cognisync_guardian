@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { Camera, FileUp, RefreshCw, X, Check, Video, Square } from "lucide-react";
-import { compressToWebP } from "@/utils/mediaCompression";
-import { sanitizeImageMetadata } from "@/utils/privacySanitizer";
+import { Camera, FileUp, RefreshCw, X, Check, Video, Square, Loader2 } from "lucide-react";
+import { optimizeAndSanitizeAsset } from "@/utils/mediaOptimizer";
+
 
 
 export type MediaCaptureMode = "camera" | "upload";
@@ -20,18 +20,14 @@ export interface CapturedAsset {
   previewUrl: string;
   blob?: Blob;
   file?: File;
+  /** Clean Base64 payload (no data-URI prefix) produced by the pre-flight optimizer. */
+  base64Data?: string;
+  mimeType?: string;
   sizeBytes?: number;
   name?: string;
 }
 
-// PDPL/enterprise gate: strict allow-list, 10 MB cap.
-const ALLOWED_MIME: readonly string[] = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-];
-const MAX_BYTES = 10 * 1024 * 1024;
+
 // 10 s hard cap on video recordings.
 const MAX_VIDEO_MS = 10_000;
 
@@ -124,15 +120,29 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     setError(null);
     setBusy(true);
     try {
-      const blob = await compressToWebP(shot);
-      const url = URL.createObjectURL(blob);
-      setAsset({ kind: "image", previewUrl: url, blob, sizeBytes: blob.size, name: "capture.webp" });
+      const rawBlob = await (await fetch(shot)).blob();
+      const rawFile = new File([rawBlob], "capture.webp", {
+        type: rawBlob.type || "image/webp",
+      });
+      const optimized = await optimizeAndSanitizeAsset(rawFile);
+      const url = URL.createObjectURL(optimized.file);
+      setAsset({
+        kind: "image",
+        previewUrl: url,
+        blob: optimized.file,
+        file: optimized.file,
+        base64Data: optimized.base64Data,
+        mimeType: optimized.mimeType,
+        sizeBytes: optimized.sizeBytes,
+        name: optimized.file.name,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Compression failed");
     } finally {
       setBusy(false);
     }
   }, []);
+
 
   const stopRecording = useCallback(() => {
     if (recordTimerRef.current) {
@@ -181,38 +191,29 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
   }, [stopRecording]);
 
   const handleFile = useCallback(async (file: File) => {
-    if (!ALLOWED_MIME.includes(file.type)) {
-      setError("Unsupported file type. Use JPEG, PNG, WebP, or PDF.");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 10 MB.`);
-      return;
-    }
     setError(null);
-    const isPdf = file.type === "application/pdf";
-    if (isPdf) {
-      const url = URL.createObjectURL(file);
-      setAsset({ kind: "pdf", previewUrl: url, file, sizeBytes: file.size, name: file.name });
-      return;
-    }
     setBusy(true);
     try {
-      const blob = await compressToWebP(file);
-      const url = URL.createObjectURL(blob);
+      const optimized = await optimizeAndSanitizeAsset(file);
+      const isPdf = optimized.mimeType === "application/pdf";
+      const url = URL.createObjectURL(optimized.file);
       setAsset({
-        kind: "image",
+        kind: isPdf ? "pdf" : "image",
         previewUrl: url,
-        blob,
-        sizeBytes: blob.size,
-        name: file.name.replace(/\.[^.]+$/, "") + ".webp",
+        blob: optimized.file,
+        file: optimized.file,
+        base64Data: optimized.base64Data,
+        mimeType: optimized.mimeType,
+        sizeBytes: optimized.sizeBytes,
+        name: optimized.file.name,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Compression failed");
+      setError(e instanceof Error ? e.message : "Optimization failed");
     } finally {
       setBusy(false);
     }
   }, []);
+
 
   const handleRetake = useCallback(() => {
     if (asset?.previewUrl.startsWith("blob:")) URL.revokeObjectURL(asset.previewUrl);
@@ -319,11 +320,23 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
         </div>
       )}
 
+      {busy && (
+        <div className="mx-auto flex w-full max-w-md items-center gap-4 rounded-4xl bg-surface p-5 shadow-3d-pressed">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-deep shadow-3d-base">
+            <Loader2 className="h-5 w-5 animate-spin text-accent-mint" strokeWidth={2.5} />
+          </div>
+          <p className="text-sm font-medium text-foreground">
+            Optimizing payload for secure AI extraction...
+          </p>
+        </div>
+      )}
+
       {asset?.sizeBytes != null && asset.kind === "image" && (
         <p className="text-center text-xs text-text-secondary">
           Compressed to {(asset.sizeBytes / 1024).toFixed(0)} KB · WebP
         </p>
       )}
+
 
       {error && (
         <p className="rounded-2xl bg-surface p-4 text-sm text-governor-red shadow-3d-pressed">
@@ -381,22 +394,12 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
             </button>
             <button
               type="button"
-              onClick={async () => {
-                try {
-                  // PDPL: strip EXIF (GPS, camera serial, timestamps) before
-                  // any downstream OCR / LLM transmission.
-                  let outgoing = asset;
-                  if (asset.kind === "image" && asset.blob) {
-                    const stripped = await sanitizeImageMetadata(asset.blob);
-                    outgoing = { ...asset, blob: stripped, sizeBytes: stripped.size };
-                  }
-                  stopMediaTracks();
-                  onConfirm?.(outgoing);
-                } catch (e) {
-                  stopMediaTracks();
-                  setError(e instanceof Error ? e.message : "Handoff failed");
-                }
+              onClick={() => {
+                // Asset is already EXIF-stripped + optimized at selection time.
+                stopMediaTracks();
+                onConfirm?.(asset);
               }}
+
               aria-label="Confirm"
               className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-mint text-slate-deep shadow-3d-base active:shadow-3d-pressed active:scale-95 transition-all"
             >
