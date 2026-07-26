@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import { Camera, FileUp, RefreshCw, X, Check, Video, Square } from "lucide-react";
-import { compressToWebP } from "@/utils/mediaCompression";
-import { sanitizeImageMetadata } from "@/utils/privacySanitizer";
+import { Camera, FileUp, RefreshCw, X, Check, Video, Square, Loader2 } from "lucide-react";
+import { optimizeAndSanitizeAsset } from "@/utils/mediaOptimizer";
+
 
 
 export type MediaCaptureMode = "camera" | "upload";
