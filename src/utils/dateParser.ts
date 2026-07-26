@@ -96,7 +96,7 @@ export function parseNaturalDate(
   return { date: r.date, isoString: r.isoString, formattedLabel: r.formattedLabel };
 }
 
-// Layer 3: Smart Extraction from Quick Text (Strips date phrase from title)
+// Layer 3: Aggressive multi-date scrubber — strips ALL temporal tokens from title.
 export function extractDateFromTitle(rawTitle: string): {
   cleanTitle: string;
   extractedDeadline: string | null;
@@ -106,16 +106,19 @@ export function extractDateFromTitle(rawTitle: string): {
     return { cleanTitle: rawTitle.trim(), extractedDeadline: null };
   }
 
-  const match = results[0];
-  const cleanTitle = rawTitle
-    .replace(match.text, "")
-    .replace(/\b(due|by|at|on)\b/gi, "")
+  let cleanTitle = rawTitle;
+  results.forEach((match) => {
+    cleanTitle = cleanTitle.replace(match.text, " ");
+  });
+  cleanTitle = cleanTitle
+    .replace(/\b(due|by|at|on|for)\b/gi, "")
     .replace(/\s+/g, " ")
+    .replace(/^[\s,;:-]+|[\s,;:-]+$/g, "")
     .trim();
 
   return {
     cleanTitle: cleanTitle || rawTitle.trim(),
-    extractedDeadline: match.text,
+    extractedDeadline: results[0].text,
   };
 }
 
