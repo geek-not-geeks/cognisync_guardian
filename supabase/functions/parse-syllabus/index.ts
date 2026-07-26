@@ -78,15 +78,16 @@ serve(async (req: Request) => {
       contents.push({ text: `Raw Text to Parse: ${rawText}` });
     }
 
-    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: contents }],
         generationConfig: {
           temperature: 0.1,
-          response_mime_type: "application/json",
-          response_schema: TASK_SCHEMA,
+          responseMimeType: "application/json",
+          responseSchema: TASK_SCHEMA,
         },
       }),
     });
