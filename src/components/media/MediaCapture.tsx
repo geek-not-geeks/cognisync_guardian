@@ -199,38 +199,29 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
   }, [stopRecording]);
 
   const handleFile = useCallback(async (file: File) => {
-    if (!ALLOWED_MIME.includes(file.type)) {
-      setError("Unsupported file type. Use JPEG, PNG, WebP, or PDF.");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 10 MB.`);
-      return;
-    }
     setError(null);
-    const isPdf = file.type === "application/pdf";
-    if (isPdf) {
-      const url = URL.createObjectURL(file);
-      setAsset({ kind: "pdf", previewUrl: url, file, sizeBytes: file.size, name: file.name });
-      return;
-    }
     setBusy(true);
     try {
-      const blob = await compressToWebP(file);
-      const url = URL.createObjectURL(blob);
+      const optimized = await optimizeAndSanitizeAsset(file);
+      const isPdf = optimized.mimeType === "application/pdf";
+      const url = URL.createObjectURL(optimized.file);
       setAsset({
-        kind: "image",
+        kind: isPdf ? "pdf" : "image",
         previewUrl: url,
-        blob,
-        sizeBytes: blob.size,
-        name: file.name.replace(/\.[^.]+$/, "") + ".webp",
+        blob: optimized.file,
+        file: optimized.file,
+        base64Data: optimized.base64Data,
+        mimeType: optimized.mimeType,
+        sizeBytes: optimized.sizeBytes,
+        name: optimized.file.name,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Compression failed");
+      setError(e instanceof Error ? e.message : "Optimization failed");
     } finally {
       setBusy(false);
     }
   }, []);
+
 
   const handleRetake = useCallback(() => {
     if (asset?.previewUrl.startsWith("blob:")) URL.revokeObjectURL(asset.previewUrl);
