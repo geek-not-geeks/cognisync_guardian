@@ -1,5 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import { parseSyllabus } from "@/lib/parseSyllabus.functions";
 import type { ParsedTaskPayload } from "@/types/task";
+
 
 export interface ParseResult {
   ok: boolean;
@@ -49,13 +50,9 @@ export async function parseOcrAsset(asset: ParseAssetInput): Promise<ParseResult
     }
 
 
-    const { data, error } = await supabase.functions.invoke("parse-syllabus", {
-      body: { imageBase64, rawText: asset.rawText, mimeType },
+    const data = await parseSyllabus({
+      data: { imageBase64, rawText: asset.rawText, mimeType },
     });
-
-    if (error) {
-      return { ok: false, reason: error.message || "Network timeout or gateway error." };
-    }
 
     if (!data || !data.ok) {
       return { ok: false, reason: data?.reason || "AI extraction could not resolve text." };
@@ -63,6 +60,7 @@ export async function parseOcrAsset(asset: ParseAssetInput): Promise<ParseResult
 
     const payload: ParsedTaskPayload[] = Array.isArray(data.payload) ? data.payload : [];
     const confidence: number = typeof data.confidence === "number" ? data.confidence : 0.9;
+
 
     if (confidence < CONFIDENCE_THRESHOLD) {
       return { ok: false, reason: "low_confidence", payload, confidence };
