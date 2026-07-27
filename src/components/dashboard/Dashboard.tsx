@@ -8,6 +8,8 @@ import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPane
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
 import { GovernorTimeline } from "@/components/dashboard/GovernorTimeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
+import { EveningCheckInModal } from "@/components/modals/EveningCheckInModal";
+
 import { calculateBurnoutTier } from "@/lib/burnoutEngine";
 import type { BurnoutTier, DailyCalibrationsRow } from "@/types/database.types";
 
@@ -159,8 +161,11 @@ export function Dashboard() {
           />
         ) : null}
       </section>
+
+      {userId && <EveningCheckInModal userId={userId} />}
     </div>
   );
+
 }
 
 
