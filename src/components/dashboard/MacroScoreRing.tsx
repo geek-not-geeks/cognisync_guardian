@@ -47,7 +47,12 @@ export function MacroScoreRing({ tier, score, label }: MacroScoreRingProps) {
           strokeLinecap="round"
           strokeDasharray={RING_CIRCUMFERENCE}
           strokeDashoffset={offset}
+          style={{
+            transition:
+              "stroke-dashoffset 700ms cubic-bezier(0.22,1,0.36,1), stroke 400ms ease",
+          }}
         />
+
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-xs text-text-secondary">Score</span>
