@@ -35,18 +35,23 @@ export function GovernorTimeline({
   const shiftedRef = useRef<string>("");
 
   const { data: tasks, isLoading } = useQuery({
-    queryKey: ["tasks", userId, "pending"],
+    queryKey: ["tasks", userId, "timeline"],
     queryFn: async (): Promise<TasksRow[]> => {
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
         .eq("user_id", userId)
-        .eq("status", "pending")
+        .in("status", ["pending", "completed"])
         .order("deadline", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data as TasksRow[] | null) ?? [];
     },
   });
+
+  const statusById = useMemo(
+    () => new Map((tasks ?? []).map((t) => [t.id, t.status])),
+    [tasks],
+  );
 
   const schedule = useMemo(
     () =>
@@ -65,6 +70,22 @@ export function GovernorTimeline({
     [tasks, targetHours, sleepHours, energyLevel],
   );
 
+  // Live pacing math: only count blocks whose underlying task is not completed.
+  const { activeWorkMinutes, activeRecoveryMinutes } = useMemo(() => {
+    let work = 0;
+    let recovery = 0;
+    let lastWorkCompleted = false;
+    for (const block of schedule.blocks) {
+      if (block.type === "work") {
+        lastWorkCompleted = statusById.get(block.taskId) === "completed";
+        if (!lastWorkCompleted) work += block.durationMinutes;
+      } else if (!lastWorkCompleted) {
+        recovery += block.durationMinutes;
+      }
+    }
+    return { activeWorkMinutes: work, activeRecoveryMinutes: recovery };
+  }, [schedule, statusById]);
+
   const complete = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -76,13 +97,15 @@ export function GovernorTimeline({
     },
     onSuccess: async () => {
       toast.success("Task completed");
-      await qc.invalidateQueries({ queryKey: ["tasks", userId] });
+      await qc.invalidateQueries({ queryKey: ["tasks"] });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
       await qc.invalidateQueries({ queryKey: ["tasks_count", userId, "pending"] });
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Failed to update task");
     },
   });
+
 
   // Background deadline shift for governor-overridden tasks (+24h)
   const overriddenKey = schedule.overriddenTaskIds.join(",");
