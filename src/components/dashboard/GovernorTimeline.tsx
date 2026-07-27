@@ -166,8 +166,9 @@ export function GovernorTimeline({
       </div>
 
       <ul>
-        {schedule.blocks.map((block) => {
-          const isDone = statusById.get(block.taskId) === "completed";
+        {schedule.blocks
+          .filter((b) => statusById.get(b.taskId) !== "completed")
+          .map((block) => {
           return block.type === "recovery" ? (
             <li
               key={block.id}
@@ -184,11 +185,7 @@ export function GovernorTimeline({
           ) : (
             <li
               key={block.id}
-              className={`mb-3 flex items-center justify-between gap-3 rounded-3xl p-4 transition-all ${
-                isDone
-                  ? "border border-dashed border-slate-800 bg-slate-deep/30 opacity-40 line-through"
-                  : "bg-surface shadow-3d-base"
-              }`}
+              className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base transition-all"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -215,13 +212,9 @@ export function GovernorTimeline({
               <button
                 type="button"
                 onClick={() => complete.mutate(block.taskId)}
-                disabled={complete.isPending || isDone}
+                disabled={complete.isPending}
                 aria-label={`Mark ${block.title} complete`}
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 disabled:opacity-50 ${
-                  isDone
-                    ? "border-accent-mint bg-slate-deep text-accent-mint"
-                    : "border-slate-700 bg-slate-deep text-text-secondary hover:border-accent-mint hover:text-accent-mint"
-                }`}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-deep text-text-secondary transition-all hover:border-accent-mint hover:text-accent-mint active:scale-95 disabled:opacity-50"
               >
                 <Check className="h-5 w-5" />
               </button>
@@ -229,6 +222,28 @@ export function GovernorTimeline({
           );
         })}
       </ul>
+
+      {completedBlocks.length > 0 && (
+        <details className="mt-6 rounded-3xl border border-slate-800 bg-slate-deep/40 p-4">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-text-secondary">
+            Completed Today ({completedBlocks.length})
+          </summary>
+          <ul className="mt-4">
+            {completedBlocks.map((block) => (
+              <li
+                key={block.id}
+                className="mb-3 flex items-center justify-between gap-3 rounded-3xl border border-dashed border-slate-800 p-4 opacity-40"
+              >
+                <p className="truncate text-sm font-semibold text-foreground line-through">
+                  {block.title}
+                </p>
+                <Check className="h-5 w-5 shrink-0 text-accent-mint" />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
 
     </div>
   );
