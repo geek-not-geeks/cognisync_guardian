@@ -17,10 +17,13 @@ export function calculateBurnoutTier(
   targetDailyMinutes: number = 360,
 ): BurnoutAssessment {
   const avgSleep =
-    trailingSleepLast4Days.reduce((a, b) => a + b, 0) /
+    trailingSleepLast4Days.reduce((a, b) => a + Number(b), 0) /
     (trailingSleepLast4Days.length || 1);
-  const latestSleep =
-    trailingSleepLast4Days[trailingSleepLast4Days.length - 1] || avgSleep;
+  const latestSleep = parseFloat(
+    Number(
+      trailingSleepLast4Days[trailingSleepLast4Days.length - 1] || avgSleep || 7.0,
+    ).toFixed(2),
+  );
 
   // 1. Workload Density Ratio (clamped 0.5 – 1.5)
   const workloadRatio = Math.min(
