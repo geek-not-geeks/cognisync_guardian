@@ -4,6 +4,7 @@ import { Check, Coffee, Timer, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { generateDailySchedule } from "@/lib/governorEngine";
+import { PostponedTray } from "@/components/dashboard/PostponedTray";
 import type { EffortSize, DifficultyLevel, TasksRow } from "@/types/database.types";
 
 interface Props {
