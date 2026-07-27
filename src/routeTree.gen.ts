@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UpdatePasswordRouteImport } from './routes/update-password'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as SandboxRouteImport } from './routes/sandbox'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ParentViewRouteImport } from './routes/parent-view'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -27,6 +28,11 @@ const UpdatePasswordRoute = UpdatePasswordRouteImport.update({
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SandboxRoute = SandboxRouteImport.update({
+  id: '/sandbox',
+  path: '/sandbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/parent-view': typeof ParentViewRoute
   '/profile': typeof ProfileRoute
+  '/sandbox': typeof SandboxRoute
   '/status': typeof StatusRoute
   '/update-password': typeof UpdatePasswordRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/parent-view': typeof ParentViewRoute
   '/profile': typeof ProfileRoute
+  '/sandbox': typeof SandboxRoute
   '/status': typeof StatusRoute
   '/update-password': typeof UpdatePasswordRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/parent-view': typeof ParentViewRoute
   '/profile': typeof ProfileRoute
+  '/sandbox': typeof SandboxRoute
   '/status': typeof StatusRoute
   '/update-password': typeof UpdatePasswordRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/parent-view'
     | '/profile'
+    | '/sandbox'
     | '/status'
     | '/update-password'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/parent-view'
     | '/profile'
+    | '/sandbox'
     | '/status'
     | '/update-password'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/parent-view'
     | '/profile'
+    | '/sandbox'
     | '/status'
     | '/update-password'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   ParentViewRoute: typeof ParentViewRoute
   ProfileRoute: typeof ProfileRoute
+  SandboxRoute: typeof SandboxRoute
   StatusRoute: typeof StatusRoute
   UpdatePasswordRoute: typeof UpdatePasswordRoute
 }
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/status'
       fullPath: '/status'
       preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sandbox': {
+      id: '/sandbox'
+      path: '/sandbox'
+      fullPath: '/sandbox'
+      preLoaderRoute: typeof SandboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   ParentViewRoute: ParentViewRoute,
   ProfileRoute: ProfileRoute,
+  SandboxRoute: SandboxRoute,
   StatusRoute: StatusRoute,
   UpdatePasswordRoute: UpdatePasswordRoute,
 }

@@ -21,15 +21,20 @@ export interface ScheduledBlock {
   effortSize: string;
   difficulty: string;
   isOverridden: boolean;
+  reason?: string;
 }
 
 export interface GovernorSchedule {
   blocks: ScheduledBlock[];
+  postponedBlocks: ScheduledBlock[];
   totalWorkMinutes: number;
   totalRecoveryMinutes: number;
   overriddenTaskIds: string[];
   statusMessage: string | null;
 }
+
+export const GUARDRAIL_REASON =
+  "Postponed by Biometric Guardrail due to < 5.0h sleep baseline.";
 
 export function generateDailySchedule(
   tasks: GovernorTaskInput[],
@@ -43,6 +48,7 @@ export function generateDailySchedule(
   let currentWorkMinutes = 0;
   let currentRecoveryMinutes = 0;
   const blocks: ScheduledBlock[] = [];
+  const postponedBlocks: ScheduledBlock[] = [];
   const overriddenTaskIds: string[] = [];
 
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -57,6 +63,17 @@ export function generateDailySchedule(
     // Sleep-Deprivation Guardrail: bar "Very Hard" tasks when exhausted
     if (isSleepDeprived && task.difficulty === "Very Hard") {
       overriddenTaskIds.push(task.id);
+      postponedBlocks.push({
+        id: `${task.id}-postponed`,
+        taskId: task.id,
+        title: task.title || "Untitled Assignment",
+        type: "work",
+        durationMinutes: task.effortSize === "Quick" ? 25 : 50,
+        effortSize: (task.effortSize as string) || "Deep Work",
+        difficulty: (task.difficulty as string) || "Very Hard",
+        isOverridden: true,
+        reason: GUARDRAIL_REASON,
+      });
       continue;
     }
 
@@ -81,7 +98,12 @@ export function generateDailySchedule(
     });
     currentWorkMinutes += blockDuration;
 
-    if (blockDuration >= 45 && currentWorkMinutes < maxWorkMinutes) {
+    const lastBlock = blocks[blocks.length - 1];
+    if (
+      blockDuration >= 45 &&
+      currentWorkMinutes < maxWorkMinutes &&
+      lastBlock?.type !== "recovery"
+    ) {
       blocks.push({
         id: `${task.id}-rest-${blocks.length}`,
         taskId: "recovery-interval",
@@ -97,12 +119,13 @@ export function generateDailySchedule(
   }
 
   let statusMessage: string | null = null;
-  if (isSleepDeprived && overriddenTaskIds.length > 0) {
-    statusMessage = `Biometric Guardrail Active: ${overriddenTaskIds.length} complex task(s) postponed due to low energy/sleep baseline.`;
+  if (isSleepDeprived && postponedBlocks.length > 0) {
+    statusMessage = `Biometric Guardrail Active: ${postponedBlocks.length} complex task(s) postponed due to low energy/sleep baseline.`;
   }
 
   return {
     blocks,
+    postponedBlocks,
     totalWorkMinutes: currentWorkMinutes,
     totalRecoveryMinutes: currentRecoveryMinutes,
     overriddenTaskIds,
