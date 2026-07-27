@@ -68,21 +68,56 @@ export function Dashboard() {
     },
   });
 
+  // Today's pending workload in minutes, used by the continuous burnout index
+  const { data: pendingTasks } = useQuery({
+    queryKey: ["tasks", userId, "burnout_workload"],
+    enabled: !!userId,
+    queryFn: async (): Promise<Array<{ effort_size: string | null }>> => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("effort_size")
+        .eq("user_id", userId!)
+        .eq("status", "pending");
+      if (error) throw error;
+      return (data as Array<{ effort_size: string | null }> | null) ?? [];
+    },
+  });
+
+  const todayWorkloadMinutes = useMemo(() => {
+    const rows = pendingTasks ?? [];
+    if (!rows.length) return 0;
+    return rows.reduce(
+      (sum, t) => sum + (t.effort_size === "Quick" ? 25 : 50),
+      0,
+    );
+  }, [pendingTasks]);
+
   const burnout = useMemo(() => {
-    const rows = trailing ?? [];
+    const rows = [...(trailing ?? [])].reverse(); // oldest → newest
     const study = rows.length
       ? rows.map((r) => Number(r.available_study_hours ?? 0))
       : [6, 5.5, 7, 6];
     const sleep = rows.length
       ? rows.map((r) => Number(r.sleep_quality ?? 0))
       : [6, 5, 6.5, 5];
-    const energy = calibration?.energy_baseline ?? rows[0]?.energy_baseline ?? 6;
-    return calculateBurnoutTier(study, sleep, energy);
-  }, [trailing, calibration]);
+    if (calibration) {
+      sleep[sleep.length - 1] = Number(calibration.sleep_quality ?? 0);
+    }
+    const energy = calibration?.energy_baseline ?? rows[rows.length - 1]?.energy_baseline ?? 6;
+    const targetDailyMinutes = (profile?.target_study_hours ?? 6) * 60;
+    return calculateBurnoutTier(
+      study,
+      sleep,
+      energy,
+      todayWorkloadMinutes,
+      targetDailyMinutes,
+    );
+  }, [trailing, calibration, todayWorkloadMinutes, profile?.target_study_hours]);
 
   const ringTier: BurnoutTier =
     burnout.tier === "red" ? "Red" : burnout.tier === "amber" ? "Amber" : "Green";
   const score = burnout.score;
+
 
 
   const metaName = (user?.user_metadata as { display_name?: string } | null)?.display_name;
