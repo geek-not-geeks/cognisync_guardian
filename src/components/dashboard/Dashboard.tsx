@@ -105,13 +105,25 @@ export function Dashboard() {
           {isLoading ? (
             <div className="h-48 w-48 animate-pulse rounded-full bg-slate-deep/40" />
           ) : (
-            <MacroScoreRing tier={tier} score={score} />
+            <MacroScoreRing tier={ringTier} score={score} label={burnout.label} />
           )}
+          <p
+            className={`mt-4 text-center text-xs font-medium ${
+              burnout.tier === "red"
+                ? "text-rose-500"
+                : burnout.tier === "amber"
+                  ? "text-warning-amber"
+                  : "text-accent-mint"
+            }`}
+          >
+            {burnout.actionTaken ?? "Trailing 4-day load within sustainable limits."}
+          </p>
           {!isLoading && !calibration && (
-            <p className="mt-4 text-center text-xs text-text-secondary">
-              Complete your morning calibration to see today's score.
+            <p className="mt-2 text-center text-xs text-text-secondary">
+              Complete your morning calibration to refine today's score.
             </p>
           )}
+
         </div>
       </div>
 
@@ -140,7 +152,8 @@ export function Dashboard() {
         ) : userId ? (
           <GovernorTimeline
             userId={userId}
-            targetHours={profile?.target_study_hours}
+            targetHours={(profile?.target_study_hours ?? 6) * burnout.capacityMultiplier}
+
             sleepHours={calibration?.sleep_quality}
             energyLevel={calibration?.energy_baseline}
           />
