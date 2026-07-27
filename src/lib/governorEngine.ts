@@ -106,11 +106,10 @@ export function generateDailySchedule(
     });
     currentWorkMinutes += blockDuration;
 
-    const lastBlock = blocks[blocks.length - 1];
     if (
       blockDuration >= 45 &&
       currentWorkMinutes < maxWorkMinutes &&
-      lastBlock?.type !== "recovery"
+      blocks[blocks.length - 1]?.type !== "recovery"
     ) {
       blocks.push({
         id: `${task.id}-rest-${blocks.length}`,
@@ -127,8 +126,10 @@ export function generateDailySchedule(
   }
 
   let statusMessage: string | null = null;
-  if (isSleepDeprived && postponedBlocks.length > 0) {
-    statusMessage = `Biometric Guardrail Active: ${postponedBlocks.length} complex task(s) postponed due to low energy/sleep baseline.`;
+  if (guardrailActive && postponedBlocks.length > 0) {
+    statusMessage = isRedState
+      ? `Red State Lockout: ${postponedBlocks.length} demanding task(s) postponed until your recovery index improves.`
+      : `Biometric Guardrail Active: ${postponedBlocks.length} complex task(s) postponed due to low energy/sleep baseline.`;
   }
 
   return {
