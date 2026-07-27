@@ -10,7 +10,7 @@ export interface ParsedDateResult {
 }
 
 // Layer 1: Strip duplicate consecutive tokens (e.g., "6pm 6pm" -> "6pm", "2026 2027" -> "2026")
-function cleanRawInput(input: string): string {
+export function cleanRawInput(input: string): string {
   return input
     .replace(/\b(\w+)(?:\s+\1\b)+/gi, "$1")
     .replace(/\b(20\d\d)\s+(20\d\d)\b/g, "$1")
@@ -31,8 +31,8 @@ export function parseDefensiveDate(
     };
   }
 
-  const cleaned = cleanRawInput(input);
-  const results = chrono.parse(cleaned, referenceDate, { forwardDate: true });
+  // Global scan across the FULL raw input so secondary dates are never dropped.
+  const results = chrono.parse(input.trim(), referenceDate, { forwardDate: true });
 
   if (results.length === 0) {
     return {
