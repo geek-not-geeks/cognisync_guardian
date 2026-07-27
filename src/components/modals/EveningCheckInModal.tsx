@@ -155,6 +155,7 @@ export function EveningCheckInModal({ userId }: Props) {
     <AnimatePresence>
       {open && (
         <motion.div
+          onClick={closeForToday}
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-deep/70 p-4 backdrop-blur-md sm:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
