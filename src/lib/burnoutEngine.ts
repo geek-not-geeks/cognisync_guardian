@@ -32,16 +32,16 @@ export function calculateBurnoutTier(
   const recoveryRatio = Math.min(Math.max(avgSleep / 8.0, 0.5), 1.2);
 
   // 3. Base Math: Density vs Recovery
-  let index = (workloadRatio / recoveryRatio) * 35.0;
+  let index = (workloadRatio / recoveryRatio) * 40.0;
 
   // 4. Acute Sleep Deficit Penalty
   if (latestSleep < 7.0) {
-    index += (7.0 - latestSleep) * 14.0;
+    index += (7.0 - latestSleep) * 12.0;
   }
 
   // 5. Energy Drain Penalty
   if (currentEnergyLevel < 6) {
-    index += (6 - currentEnergyLevel) * 6.5;
+    index += (6 - currentEnergyLevel) * 6.0;
   }
 
   const clampedScore = Math.min(Math.max(Math.round(index), 2), 98);
