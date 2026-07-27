@@ -35,18 +35,23 @@ export function GovernorTimeline({
   const shiftedRef = useRef<string>("");
 
   const { data: tasks, isLoading } = useQuery({
-    queryKey: ["tasks", userId, "pending"],
+    queryKey: ["tasks", userId, "timeline"],
     queryFn: async (): Promise<TasksRow[]> => {
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
         .eq("user_id", userId)
-        .eq("status", "pending")
+        .in("status", ["pending", "completed"])
         .order("deadline", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data as TasksRow[] | null) ?? [];
     },
   });
+
+  const statusById = useMemo(
+    () => new Map((tasks ?? []).map((t) => [t.id, t.status])),
+    [tasks],
+  );
 
   const schedule = useMemo(
     () =>
@@ -65,6 +70,22 @@ export function GovernorTimeline({
     [tasks, targetHours, sleepHours, energyLevel],
   );
 
+  // Live pacing math: only count blocks whose underlying task is not completed.
+  const { activeWorkMinutes, activeRecoveryMinutes } = useMemo(() => {
+    let work = 0;
+    let recovery = 0;
+    let lastWorkCompleted = false;
+    for (const block of schedule.blocks) {
+      if (block.type === "work") {
+        lastWorkCompleted = statusById.get(block.taskId) === "completed";
+        if (!lastWorkCompleted) work += block.durationMinutes;
+      } else if (!lastWorkCompleted) {
+        recovery += block.durationMinutes;
+      }
+    }
+    return { activeWorkMinutes: work, activeRecoveryMinutes: recovery };
+  }, [schedule, statusById]);
+
   const complete = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -76,13 +97,15 @@ export function GovernorTimeline({
     },
     onSuccess: async () => {
       toast.success("Task completed");
-      await qc.invalidateQueries({ queryKey: ["tasks", userId] });
+      await qc.invalidateQueries({ queryKey: ["tasks"] });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
       await qc.invalidateQueries({ queryKey: ["tasks_count", userId, "pending"] });
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Failed to update task");
     },
   });
+
 
   // Background deadline shift for governor-overridden tasks (+24h)
   const overriddenKey = schedule.overriddenTaskIds.join(",");
@@ -137,14 +160,15 @@ export function GovernorTimeline({
       )}
 
       <div className="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-text-secondary">
-        <span>{schedule.totalWorkMinutes}m focus</span>
+        <span>{activeWorkMinutes}m focus</span>
         <span>·</span>
-        <span>{schedule.totalRecoveryMinutes}m recovery</span>
+        <span>{activeRecoveryMinutes}m recovery</span>
       </div>
 
       <ul>
-        {schedule.blocks.map((block) =>
-          block.type === "recovery" ? (
+        {schedule.blocks.map((block) => {
+          const isDone = statusById.get(block.taskId) === "completed";
+          return block.type === "recovery" ? (
             <li
               key={block.id}
               className="mb-3 flex items-center justify-between gap-3 rounded-full bg-surface/50 px-5 py-3 opacity-70 shadow-3d-pressed"
@@ -160,7 +184,11 @@ export function GovernorTimeline({
           ) : (
             <li
               key={block.id}
-              className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base"
+              className={`mb-3 flex items-center justify-between gap-3 rounded-3xl p-4 transition-all ${
+                isDone
+                  ? "border border-dashed border-slate-800 bg-slate-deep/30 opacity-40 line-through"
+                  : "bg-surface shadow-3d-base"
+              }`}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -187,16 +215,21 @@ export function GovernorTimeline({
               <button
                 type="button"
                 onClick={() => complete.mutate(block.taskId)}
-                disabled={complete.isPending}
+                disabled={complete.isPending || isDone}
                 aria-label={`Mark ${block.title} complete`}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-deep text-text-secondary transition-all hover:border-accent-mint hover:text-accent-mint active:scale-95 disabled:opacity-50"
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 disabled:opacity-50 ${
+                  isDone
+                    ? "border-accent-mint bg-slate-deep text-accent-mint"
+                    : "border-slate-700 bg-slate-deep text-text-secondary hover:border-accent-mint hover:text-accent-mint"
+                }`}
               >
                 <Check className="h-5 w-5" />
               </button>
             </li>
-          ),
-        )}
+          );
+        })}
       </ul>
+
     </div>
   );
 }

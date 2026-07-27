@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +8,9 @@ import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPane
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
 import { GovernorTimeline } from "@/components/dashboard/GovernorTimeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import type { DailyCalibrationsRow } from "@/types/database.types";
+import { calculateBurnoutTier } from "@/lib/burnoutEngine";
+import type { BurnoutTier, DailyCalibrationsRow } from "@/types/database.types";
+
 
 
 function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
@@ -47,8 +50,38 @@ export function Dashboard() {
 
   const { data: profile } = useProfile();
 
-  const tier = calibration?.burnout_tier ?? null;
-  const score = calibration ? Math.round((calibration.energy_baseline ?? 0) * 10) : 0;
+  // Trailing 4-day biometrics for the Burnout Engine
+  const { data: trailing } = useQuery({
+    queryKey: ["daily_calibrations_last4", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<DailyCalibrationsRow[]> => {
+      const { data, error } = await supabase
+        .from("daily_calibrations")
+        .select("*")
+        .eq("user_id", userId!)
+        .order("date", { ascending: false })
+        .limit(4);
+      if (error) throw error;
+      return (data as DailyCalibrationsRow[] | null) ?? [];
+    },
+  });
+
+  const burnout = useMemo(() => {
+    const rows = trailing ?? [];
+    const study = rows.length
+      ? rows.map((r) => Number(r.available_study_hours ?? 0))
+      : [6, 5.5, 7, 6];
+    const sleep = rows.length
+      ? rows.map((r) => Number(r.sleep_quality ?? 0))
+      : [6, 5, 6.5, 5];
+    const energy = calibration?.energy_baseline ?? rows[0]?.energy_baseline ?? 6;
+    return calculateBurnoutTier(study, sleep, energy);
+  }, [trailing, calibration]);
+
+  const ringTier: BurnoutTier =
+    burnout.tier === "red" ? "Red" : burnout.tier === "amber" ? "Amber" : "Green";
+  const score = burnout.score;
+
 
   const metaName = (user?.user_metadata as { display_name?: string } | null)?.display_name;
   const rawName = profile?.display_name || metaName;
@@ -72,13 +105,25 @@ export function Dashboard() {
           {isLoading ? (
             <div className="h-48 w-48 animate-pulse rounded-full bg-slate-deep/40" />
           ) : (
-            <MacroScoreRing tier={tier} score={score} />
+            <MacroScoreRing tier={ringTier} score={score} label={burnout.label} />
           )}
+          <p
+            className={`mt-4 text-center text-xs font-medium ${
+              burnout.tier === "red"
+                ? "text-rose-500"
+                : burnout.tier === "amber"
+                  ? "text-warning-amber"
+                  : "text-accent-mint"
+            }`}
+          >
+            {burnout.actionTaken ?? "Trailing 4-day load within sustainable limits."}
+          </p>
           {!isLoading && !calibration && (
-            <p className="mt-4 text-center text-xs text-text-secondary">
-              Complete your morning calibration to see today's score.
+            <p className="mt-2 text-center text-xs text-text-secondary">
+              Complete your morning calibration to refine today's score.
             </p>
           )}
+
         </div>
       </div>
 
@@ -107,7 +152,8 @@ export function Dashboard() {
         ) : userId ? (
           <GovernorTimeline
             userId={userId}
-            targetHours={profile?.target_study_hours}
+            targetHours={(profile?.target_study_hours ?? 6) * burnout.capacityMultiplier}
+
             sleepHours={calibration?.sleep_quality}
             energyLevel={calibration?.energy_baseline}
           />
