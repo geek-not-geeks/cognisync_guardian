@@ -256,7 +256,7 @@ export function GovernorTimeline({
         </details>
       )}
 
-
+      <PostponedTray blocks={schedule.postponedBlocks} />
     </div>
   );
 }
