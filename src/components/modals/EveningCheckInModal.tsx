@@ -93,6 +93,7 @@ export function EveningCheckInModal({ userId }: Props) {
       await patchTask(task.id, { deadline: tomorrowISO });
 
       toast("Task snoozed +24 hours", {
+        duration: UNDO_DURATION,
         description: `Moved "${task.title}" to tomorrow.`,
         action: {
           label: "Undo",
@@ -112,6 +113,7 @@ export function EveningCheckInModal({ userId }: Props) {
       await patchTask(task.id, { status: "completed" });
 
       toast("Task marked complete", {
+        duration: UNDO_DURATION,
         description: `"${task.title}" archived for today.`,
         action: {
           label: "Undo",
@@ -130,6 +132,7 @@ export function EveningCheckInModal({ userId }: Props) {
       await patchTask(task.id, { status: "rolled_back" });
 
       toast("Task dropped", {
+        duration: UNDO_DURATION,
         description: `"${task.title}" rolled back out of today.`,
         action: {
           label: "Undo",
