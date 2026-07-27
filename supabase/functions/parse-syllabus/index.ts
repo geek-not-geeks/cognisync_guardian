@@ -35,26 +35,10 @@ const TASK_SCHEMA = {
   required: ["tasks", "confidence"],
 };
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
-const LEGACY_MODEL_ALIASES: Record<string, string> = {
-  "gemini-1.5-flash": DEFAULT_GEMINI_MODEL,
-  "models/gemini-1.5-flash": DEFAULT_GEMINI_MODEL,
-  "gemini-1.5-flash-latest": DEFAULT_GEMINI_MODEL,
-  "models/gemini-1.5-flash-latest": DEFAULT_GEMINI_MODEL,
-};
-
-function normalizeGeminiModel(model: string) {
-  const trimmed = model.trim();
-  const withoutPrefix = trimmed.replace(/^models\//, "");
-  return LEGACY_MODEL_ALIASES[trimmed] ?? LEGACY_MODEL_ALIASES[withoutPrefix] ?? withoutPrefix;
-}
-
-function resolveGeminiModels() {
-  const configuredModel = Deno.env.get("GEMINI_MODEL")?.trim();
-  const primaryModel = configuredModel ? normalizeGeminiModel(configuredModel) : DEFAULT_GEMINI_MODEL;
-
-  return Array.from(new Set([primaryModel, DEFAULT_GEMINI_MODEL]));
-}
+// Gemini 1.5 Flash is retired and now returns a provider 404 on v1beta.
+// Do not read GEMINI_MODEL here: a stale project secret can reintroduce the
+// retired model at runtime even when the deployed source looks correct.
+const GEMINI_MODEL = "gemini-2.0-flash";
 
 async function callGeminiModel(apiKey: string, model: string, contents: unknown[]) {
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
@@ -126,18 +110,10 @@ serve(async (req: Request) => {
       contents.push({ text: `Raw Text to Parse: ${rawText}` });
     }
 
-    let aiResponse: Response | null = null;
-    let lastAiError = "AI model unavailable.";
-    for (const model of resolveGeminiModels()) {
-      aiResponse = await callGeminiModel(apiKey, model, contents);
-      if (aiResponse.ok) break;
+    const aiResponse = await callGeminiModel(apiKey, GEMINI_MODEL, contents);
 
-      lastAiError = await aiResponse.text();
-      const isRetriableModelMiss = aiResponse.status === 404 && /gemini-1\.5-flash|not found|supported for generateContent/i.test(lastAiError);
-      if (!isRetriableModelMiss) break;
-    }
-
-    if (!aiResponse || !aiResponse.ok) {
+    if (!aiResponse.ok) {
+      const lastAiError = await aiResponse.text();
       return jsonResponse({ ok: false, reason: `AI Gateway Error: ${lastAiError}` });
     }
 
