@@ -5,7 +5,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
-import { TaskPipeline } from "@/components/dashboard/TaskPipeline";
+import { GovernorTimeline } from "@/components/dashboard/GovernorTimeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import type { DailyCalibrationsRow } from "@/types/database.types";
 
@@ -105,7 +105,12 @@ export function Dashboard() {
             Calendar is locked. Only maintenance slots above are available.
           </p>
         ) : userId ? (
-          <TaskPipeline userId={userId} />
+          <GovernorTimeline
+            userId={userId}
+            targetHours={profile?.target_study_hours}
+            sleepHours={calibration?.sleep_quality}
+            energyLevel={calibration?.energy_baseline}
+          />
         ) : null}
       </section>
     </div>
