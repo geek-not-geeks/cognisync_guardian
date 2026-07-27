@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera, FileUp, RefreshCw, X, Check, Video, Square, Loader2 } from "lucide-react";
 import { optimizeAndSanitizeAsset } from "@/utils/mediaOptimizer";
+import { isNative, captureHardwarePhoto } from "@/utils/nativeDevice";
 
 
 
@@ -213,6 +214,26 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
       setBusy(false);
     }
   }, []);
+
+  /**
+   * On device, hand the capture to the OS camera (hardware pre-scaling,
+   * no WebKit memory ceiling) and feed the result straight into the
+   * optimizer, bypassing the web file picker entirely.
+   */
+  const handleNativeCapture = useCallback(async () => {
+    setError(null);
+    stopMediaTracks();
+    const nativeFile = await captureHardwarePhoto();
+    if (!nativeFile) return;
+    await handleFile(nativeFile);
+  }, [handleFile, stopMediaTracks]);
+
+  useEffect(() => {
+    if (isNative && mode === "camera" && !asset) void handleNativeCapture();
+    // Run once per camera session; re-runs are driven by retake clearing `asset`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, asset]);
+
 
 
   const handleRetake = useCallback(() => {
