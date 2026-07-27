@@ -32,6 +32,7 @@ export function GovernorTimeline({
   targetHours,
   sleepHours,
   energyLevel,
+  burnoutScore = 0,
 }: Props) {
   const qc = useQueryClient();
   const shiftedRef = useRef<string>("");
