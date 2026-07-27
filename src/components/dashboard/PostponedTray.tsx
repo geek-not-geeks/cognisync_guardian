@@ -12,7 +12,7 @@ export function PostponedTray({ blocks }: Props) {
     <section className="mt-6 rounded-3xl bg-surface p-5 shadow-3d-base">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <Lock className="h-4 w-4 text-warning-amber" />
-        Postponed for Cognitive Recovery
+        🔒 Postponed for Cognitive Recovery
       </h3>
       <ul className="mt-4 space-y-3">
         {blocks.map((block) => (

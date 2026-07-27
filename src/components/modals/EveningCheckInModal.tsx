@@ -11,15 +11,39 @@ interface Props {
   userId: string;
 }
 
+const SYNC_KEY = "last_evening_sync_date";
+
+function todayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 function isEvening(): boolean {
   return new Date().getHours() >= 21;
 }
 
+function alreadySeenToday(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(SYNC_KEY) === todayStr();
+  } catch {
+    return false;
+  }
+}
+
 export function EveningCheckInModal({ userId }: Props) {
   const qc = useQueryClient();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => alreadySeenToday());
   const [busy, setBusy] = useState(false);
   const evening = useMemo(isEvening, []);
+
+  const closeForToday = () => {
+    try {
+      localStorage.setItem(SYNC_KEY, todayStr());
+    } catch {
+      /* storage unavailable — session-only dismissal */
+    }
+    setDismissed(true);
+  };
 
   const { data: tasks } = useQuery({
     queryKey: ["tasks", userId, "evening"],
@@ -122,7 +146,7 @@ export function EveningCheckInModal({ userId }: Props) {
       await executePessimisticRollover(userId);
       await refresh();
       toast.success("Workload reconciled for tomorrow!");
-      setDismissed(true);
+      closeForToday();
     });
 
   const open = evening && !dismissed && (tasks?.length ?? 0) > 0;
@@ -131,12 +155,14 @@ export function EveningCheckInModal({ userId }: Props) {
     <AnimatePresence>
       {open && (
         <motion.div
+          onClick={closeForToday}
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-deep/70 p-4 backdrop-blur-md sm:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
+            onClick={(e) => e.stopPropagation()}
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
@@ -154,7 +180,7 @@ export function EveningCheckInModal({ userId }: Props) {
               <button
                 type="button"
                 aria-label="Dismiss evening sync"
-                onClick={() => setDismissed(true)}
+                onClick={closeForToday}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-deep text-text-secondary"
               >
                 <X className="h-4 w-4" />

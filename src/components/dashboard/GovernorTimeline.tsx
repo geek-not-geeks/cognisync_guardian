@@ -12,6 +12,7 @@ interface Props {
   targetHours: number | null | undefined;
   sleepHours: number | null | undefined;
   energyLevel: number | null | undefined;
+  burnoutScore?: number;
 }
 
 const effortColor: Record<string, string> = {
@@ -31,6 +32,7 @@ export function GovernorTimeline({
   targetHours,
   sleepHours,
   energyLevel,
+  burnoutScore = 0,
 }: Props) {
   const qc = useQueryClient();
   const shiftedRef = useRef<string>("");
@@ -67,8 +69,9 @@ export function GovernorTimeline({
         targetHours ?? 6,
         sleepHours ?? 7,
         energyLevel ?? 5,
+        burnoutScore,
       ),
-    [tasks, targetHours, sleepHours, energyLevel],
+    [tasks, targetHours, sleepHours, energyLevel, burnoutScore],
   );
 
   // Live pacing math: only count blocks whose underlying task is not completed.
