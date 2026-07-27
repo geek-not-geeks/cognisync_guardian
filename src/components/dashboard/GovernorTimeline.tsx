@@ -69,8 +69,9 @@ export function GovernorTimeline({
         targetHours ?? 6,
         sleepHours ?? 7,
         energyLevel ?? 5,
+        burnoutScore,
       ),
-    [tasks, targetHours, sleepHours, energyLevel],
+    [tasks, targetHours, sleepHours, energyLevel, burnoutScore],
   );
 
   // Live pacing math: only count blocks whose underlying task is not completed.
