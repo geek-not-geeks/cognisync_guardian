@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { NativeStorage, bindNativeNetworkListener } from "@/utils/nativeDevice";
 import type { Database, TaskStatus } from "@/types/database.types";
 
 type TaskInsert = Database["public"]["Tables"]["tasks"]["Insert"];
@@ -32,19 +33,38 @@ const BACKOFF_CAP_MS = 30_000;
 const MAX_ATTEMPTS = 5;
 let backoffTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * In-memory mirror of the durable queue. Hydrated from NativeStorage
+ * (OS SharedPreferences on device, localStorage on web) at boot so reads stay
+ * synchronous while persistence survives device reboots.
+ */
+let cache: QueueEntry[] | null = null;
+
 function read(): QueueEntry[] {
+  if (cache) return cache;
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(window.localStorage.getItem(KEY) ?? "[]") as QueueEntry[];
+    cache = JSON.parse(window.localStorage.getItem(KEY) ?? "[]") as QueueEntry[];
   } catch {
-    return [];
+    cache = [];
   }
+  return cache;
 }
 
 function write(entries: QueueEntry[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(entries));
+  cache = entries;
+  void NativeStorage.setItem(KEY, JSON.stringify(entries));
   queueListeners.forEach((l) => l(entries));
+}
+
+async function hydrate(): Promise<void> {
+  try {
+    const raw = await NativeStorage.getItem(KEY);
+    cache = raw ? (JSON.parse(raw) as QueueEntry[]) : [];
+  } catch {
+    cache = [];
+  }
+  queueListeners.forEach((l) => l(cache!));
 }
 
 function setStatus(next: QueueStatus) {
@@ -160,11 +180,12 @@ function scheduleBackoff() {
 
 export function initOfflineQueue() {
   if (typeof window === "undefined") return;
-  window.addEventListener("online", () => {
+  // Native radio-state listener on device, `online` event on web.
+  bindNativeNetworkListener(() => {
     backoffAttempt = 0;
     void drain();
   });
   window.addEventListener("offline", () => setStatus("offline"));
   if (!navigator.onLine) setStatus("offline");
-  void drain();
+  void hydrate().then(() => drain());
 }
