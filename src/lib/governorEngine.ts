@@ -21,15 +21,20 @@ export interface ScheduledBlock {
   effortSize: string;
   difficulty: string;
   isOverridden: boolean;
+  reason?: string;
 }
 
 export interface GovernorSchedule {
   blocks: ScheduledBlock[];
+  postponedBlocks: ScheduledBlock[];
   totalWorkMinutes: number;
   totalRecoveryMinutes: number;
   overriddenTaskIds: string[];
   statusMessage: string | null;
 }
+
+export const GUARDRAIL_REASON =
+  "Postponed by Biometric Guardrail due to < 5.0h sleep baseline.";
 
 export function generateDailySchedule(
   tasks: GovernorTaskInput[],
