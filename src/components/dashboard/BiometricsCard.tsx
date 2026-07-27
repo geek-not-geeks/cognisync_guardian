@@ -43,11 +43,12 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
 
   const commit = useMutation({
     mutationFn: async () => {
-      const tier = computeTier(sleep, energy);
+      const preciseSleep = parseFloat(Number(sleep).toFixed(2));
+      const tier = computeTier(preciseSleep, energy);
       const payload = {
         user_id: userId,
         date,
-        sleep_quality: sleep,
+        sleep_quality: preciseSleep,
         energy_baseline: energy,
         available_study_hours: calibration?.available_study_hours ?? 0,
         burnout_tier: tier,
@@ -59,13 +60,18 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
     },
     onSuccess: async () => {
       toast.success("Calibration committed");
-      await qc.invalidateQueries({ queryKey: ["daily_calibrations", userId, date] });
+      await qc.invalidateQueries({ queryKey: ["daily_calibrations"] });
+      await qc.invalidateQueries({ queryKey: ["daily_calibrations_last4"] });
+      await qc.invalidateQueries({ queryKey: ["burnout_biometrics"] });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      await qc.invalidateQueries({ queryKey: ["tasks"] });
       setEditing(false);
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Failed to save calibration");
     },
   });
+
 
   const badge = energyBadge(energy);
 
