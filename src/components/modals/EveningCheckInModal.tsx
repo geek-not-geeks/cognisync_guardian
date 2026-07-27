@@ -180,7 +180,7 @@ export function EveningCheckInModal({ userId }: Props) {
               <button
                 type="button"
                 aria-label="Dismiss evening sync"
-                onClick={() => setDismissed(true)}
+                onClick={closeForToday}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-deep text-text-secondary"
               >
                 <X className="h-4 w-4" />
