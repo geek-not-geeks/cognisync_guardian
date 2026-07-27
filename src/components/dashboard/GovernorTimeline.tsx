@@ -86,6 +86,14 @@ export function GovernorTimeline({
     return { activeWorkMinutes: work, activeRecoveryMinutes: recovery };
   }, [schedule, statusById]);
 
+  const completedBlocks = useMemo(
+    () =>
+      schedule.blocks.filter(
+        (b) => b.type === "work" && statusById.get(b.taskId) === "completed",
+      ),
+    [schedule, statusById],
+  );
+
   const complete = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
