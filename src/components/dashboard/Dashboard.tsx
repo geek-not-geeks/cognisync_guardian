@@ -161,8 +161,11 @@ export function Dashboard() {
           />
         ) : null}
       </section>
+
+      {userId && <EveningCheckInModal userId={userId} />}
     </div>
   );
+
 }
 
 
