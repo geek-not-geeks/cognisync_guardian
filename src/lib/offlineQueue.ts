@@ -180,11 +180,12 @@ function scheduleBackoff() {
 
 export function initOfflineQueue() {
   if (typeof window === "undefined") return;
-  window.addEventListener("online", () => {
+  // Native radio-state listener on device, `online` event on web.
+  bindNativeNetworkListener(() => {
     backoffAttempt = 0;
     void drain();
   });
   window.addEventListener("offline", () => setStatus("offline"));
   if (!navigator.onLine) setStatus("offline");
-  void drain();
+  void hydrate().then(() => drain());
 }
