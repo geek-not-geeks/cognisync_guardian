@@ -170,10 +170,19 @@
 
 /* Capacitor / iOS Dynamic Island + Android gesture bar safe-area padding. */
 @utility pt-safe {
-  padding-top: env(safe-area-inset-top);
+  padding-top: max(1.5rem, env(safe-area-inset-top));
 }
 
 @utility pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
+
+@utility pl-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
+
+@utility pr-safe {
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
 
