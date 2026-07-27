@@ -34,16 +34,19 @@ export interface GovernorSchedule {
 }
 
 export const GUARDRAIL_REASON =
-  "Postponed by Biometric Guardrail due to < 5.0h sleep baseline.";
+  "Postponed by Biometric Guardrail due to low recovery baseline.";
 
 export function generateDailySchedule(
   tasks: GovernorTaskInput[],
   targetHours: number = 6.0,
   sleepHours: number = 7.0,
   energyLevel: number = 5,
+  burnoutScore: number = 0,
 ): GovernorSchedule {
   const maxWorkMinutes = Math.round((targetHours || 6) * 60);
   const isSleepDeprived = sleepHours < 5.0 || energyLevel <= 3;
+  const isRedState = burnoutScore >= 75;
+  const guardrailActive = isSleepDeprived || isRedState;
 
   let currentWorkMinutes = 0;
   let currentRecoveryMinutes = 0;
@@ -60,8 +63,13 @@ export function generateDailySchedule(
   for (const task of sortedTasks) {
     if (currentWorkMinutes >= maxWorkMinutes) break;
 
-    // Sleep-Deprivation Guardrail: bar "Very Hard" tasks when exhausted
-    if (isSleepDeprived && task.difficulty === "Very Hard") {
+    // Biometric / Red-State Guardrail: bar cognitively expensive tasks
+    const isHeavy =
+      task.effortSize === "Deep Work" ||
+      task.difficulty === "Very Hard" ||
+      task.difficulty === "Challenging";
+
+    if (guardrailActive && isHeavy) {
       overriddenTaskIds.push(task.id);
       postponedBlocks.push({
         id: `${task.id}-postponed`,
@@ -98,11 +106,10 @@ export function generateDailySchedule(
     });
     currentWorkMinutes += blockDuration;
 
-    const lastBlock = blocks[blocks.length - 1];
     if (
       blockDuration >= 45 &&
       currentWorkMinutes < maxWorkMinutes &&
-      lastBlock?.type !== "recovery"
+      blocks[blocks.length - 1]?.type !== "recovery"
     ) {
       blocks.push({
         id: `${task.id}-rest-${blocks.length}`,
@@ -119,8 +126,10 @@ export function generateDailySchedule(
   }
 
   let statusMessage: string | null = null;
-  if (isSleepDeprived && postponedBlocks.length > 0) {
-    statusMessage = `Biometric Guardrail Active: ${postponedBlocks.length} complex task(s) postponed due to low energy/sleep baseline.`;
+  if (guardrailActive && postponedBlocks.length > 0) {
+    statusMessage = isRedState
+      ? `Red State Lockout: ${postponedBlocks.length} demanding task(s) postponed until your recovery index improves.`
+      : `Biometric Guardrail Active: ${postponedBlocks.length} complex task(s) postponed due to low energy/sleep baseline.`;
   }
 
   return {
