@@ -34,16 +34,19 @@ export interface GovernorSchedule {
 }
 
 export const GUARDRAIL_REASON =
-  "Postponed by Biometric Guardrail due to < 5.0h sleep baseline.";
+  "Postponed by Biometric Guardrail due to low recovery baseline.";
 
 export function generateDailySchedule(
   tasks: GovernorTaskInput[],
   targetHours: number = 6.0,
   sleepHours: number = 7.0,
   energyLevel: number = 5,
+  burnoutScore: number = 0,
 ): GovernorSchedule {
   const maxWorkMinutes = Math.round((targetHours || 6) * 60);
   const isSleepDeprived = sleepHours < 5.0 || energyLevel <= 3;
+  const isRedState = burnoutScore >= 75;
+  const guardrailActive = isSleepDeprived || isRedState;
 
   let currentWorkMinutes = 0;
   let currentRecoveryMinutes = 0;
