@@ -22,8 +22,13 @@ export interface DailyCalibrationsRow {
   id: string;
   user_id: string;
   date: string; // YYYY-MM-DD
+  /** Mirrors `date` in the upgraded schema. */
+  calibration_date?: string | null;
   energy_baseline: number;
   sleep_quality: number;
+  /** NUMERIC(4,2) decimal columns from the upgraded schema. */
+  sleep_hours?: number | null;
+  energy_level?: number | null;
   available_study_hours: number;
   burnout_tier: BurnoutTier;
 }
