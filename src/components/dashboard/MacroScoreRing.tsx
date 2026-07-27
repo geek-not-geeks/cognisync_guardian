@@ -12,10 +12,12 @@ const TIER_META: Record<BurnoutTier, { color: string; label: string }> = {
 interface MacroScoreRingProps {
   tier: BurnoutTier | null;
   score: number; // 0-100
+  label?: string;
 }
 
-export function MacroScoreRing({ tier, score }: MacroScoreRingProps) {
-  const meta = tier ? TIER_META[tier] : { color: "var(--color-slate-700, #334155)", label: "No data" };
+export function MacroScoreRing({ tier, score, label }: MacroScoreRingProps) {
+  const base = tier ? TIER_META[tier] : { color: "var(--color-slate-700, #334155)", label: "No data" };
+  const meta = { color: base.color, label: label ?? base.label };
   const pct = Math.max(0, Math.min(100, score)) / 100;
   const offset = RING_CIRCUMFERENCE * (1 - pct);
 

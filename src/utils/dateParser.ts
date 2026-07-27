@@ -111,7 +111,10 @@ export function extractDateFromTitle(rawTitle: string): {
     cleanTitle = cleanTitle.replace(match.text, " ");
   });
   cleanTitle = cleanTitle
-    .replace(/\b(due|by|at|on|for)\b/gi, "")
+    .replace(
+      /\b(finish by|complete before|submit on|submit by|work until|due on|due by|due|by|at|on|for)\b/gi,
+      "",
+    )
     .replace(/\s+/g, " ")
     .replace(/^[\s,;:-]+|[\s,;:-]+$/g, "")
     .trim();
