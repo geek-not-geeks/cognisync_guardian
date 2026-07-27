@@ -146,7 +146,7 @@ export function EveningCheckInModal({ userId }: Props) {
       await executePessimisticRollover(userId);
       await refresh();
       toast.success("Workload reconciled for tomorrow!");
-      setDismissed(true);
+      closeForToday();
     });
 
   const open = evening && !dismissed && (tasks?.length ?? 0) > 0;
