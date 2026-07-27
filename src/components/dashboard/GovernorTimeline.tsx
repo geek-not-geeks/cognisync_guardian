@@ -4,6 +4,7 @@ import { Check, Coffee, Timer, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { generateDailySchedule } from "@/lib/governorEngine";
+import { PostponedTray } from "@/components/dashboard/PostponedTray";
 import type { EffortSize, DifficultyLevel, TasksRow } from "@/types/database.types";
 
 interface Props {
@@ -146,12 +147,15 @@ export function GovernorTimeline({
 
   if (schedule.blocks.length === 0) {
     return (
-      <div className="rounded-3xl bg-surface p-6 text-center shadow-3d-base">
-        <p className="text-sm text-text-secondary">
-          No blocks scheduled. Tap{" "}
-          <span className="font-semibold text-accent-mint">Add Task</span> below to
-          initialize your workload.
-        </p>
+      <div>
+        <div className="rounded-3xl bg-surface p-6 text-center shadow-3d-base">
+          <p className="text-sm text-text-secondary">
+            No blocks scheduled. Tap{" "}
+            <span className="font-semibold text-accent-mint">Add Task</span> below to
+            initialize your workload.
+          </p>
+        </div>
+        <PostponedTray blocks={schedule.postponedBlocks} />
       </div>
     );
   }
@@ -252,7 +256,7 @@ export function GovernorTimeline({
         </details>
       )}
 
-
+      <PostponedTray blocks={schedule.postponedBlocks} />
     </div>
   );
 }
