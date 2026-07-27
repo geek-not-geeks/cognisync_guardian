@@ -160,14 +160,15 @@ export function GovernorTimeline({
       )}
 
       <div className="mb-3 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-text-secondary">
-        <span>{schedule.totalWorkMinutes}m focus</span>
+        <span>{activeWorkMinutes}m focus</span>
         <span>·</span>
-        <span>{schedule.totalRecoveryMinutes}m recovery</span>
+        <span>{activeRecoveryMinutes}m recovery</span>
       </div>
 
       <ul>
-        {schedule.blocks.map((block) =>
-          block.type === "recovery" ? (
+        {schedule.blocks.map((block) => {
+          const isDone = statusById.get(block.taskId) === "completed";
+          return block.type === "recovery" ? (
             <li
               key={block.id}
               className="mb-3 flex items-center justify-between gap-3 rounded-full bg-surface/50 px-5 py-3 opacity-70 shadow-3d-pressed"
@@ -183,7 +184,11 @@ export function GovernorTimeline({
           ) : (
             <li
               key={block.id}
-              className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base"
+              className={`mb-3 flex items-center justify-between gap-3 rounded-3xl p-4 transition-all ${
+                isDone
+                  ? "border border-dashed border-slate-800 bg-slate-deep/30 opacity-40 line-through"
+                  : "bg-surface shadow-3d-base"
+              }`}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -210,16 +215,21 @@ export function GovernorTimeline({
               <button
                 type="button"
                 onClick={() => complete.mutate(block.taskId)}
-                disabled={complete.isPending}
+                disabled={complete.isPending || isDone}
                 aria-label={`Mark ${block.title} complete`}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-deep text-text-secondary transition-all hover:border-accent-mint hover:text-accent-mint active:scale-95 disabled:opacity-50"
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95 disabled:opacity-50 ${
+                  isDone
+                    ? "border-accent-mint bg-slate-deep text-accent-mint"
+                    : "border-slate-700 bg-slate-deep text-text-secondary hover:border-accent-mint hover:text-accent-mint"
+                }`}
               >
                 <Check className="h-5 w-5" />
               </button>
             </li>
-          ),
-        )}
+          );
+        })}
       </ul>
+
     </div>
   );
 }
