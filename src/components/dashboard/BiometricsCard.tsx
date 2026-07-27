@@ -43,11 +43,12 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
 
   const commit = useMutation({
     mutationFn: async () => {
-      const tier = computeTier(sleep, energy);
+      const preciseSleep = parseFloat(Number(sleep).toFixed(2));
+      const tier = computeTier(preciseSleep, energy);
       const payload = {
         user_id: userId,
         date,
-        sleep_quality: sleep,
+        sleep_quality: preciseSleep,
         energy_baseline: energy,
         available_study_hours: calibration?.available_study_hours ?? 0,
         burnout_tier: tier,
@@ -59,13 +60,18 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
     },
     onSuccess: async () => {
       toast.success("Calibration committed");
-      await qc.invalidateQueries({ queryKey: ["daily_calibrations", userId, date] });
+      await qc.invalidateQueries({ queryKey: ["daily_calibrations"] });
+      await qc.invalidateQueries({ queryKey: ["daily_calibrations_last4"] });
+      await qc.invalidateQueries({ queryKey: ["burnout_biometrics"] });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      await qc.invalidateQueries({ queryKey: ["tasks"] });
       setEditing(false);
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Failed to save calibration");
     },
   });
+
 
   const badge = energyBadge(energy);
 
@@ -121,20 +127,36 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
               Sleep Hours
             </label>
             <span className="text-lg font-semibold text-foreground">
-              {sleep.toFixed(1)} Hours
+              {sleep.toFixed(2)} Hours
             </span>
           </div>
-          <input
-            id="sleep-slider"
-            type="range"
-            min={1}
-            max={12}
-            step={0.5}
-            value={sleep}
-            onChange={(e) => setSleep(Number(e.target.value))}
-            className="mt-2 w-full accent-accent-mint"
-          />
+          <div className="mt-2 flex items-center gap-3">
+            <input
+              id="sleep-slider"
+              type="range"
+              min={1.0}
+              max={12.0}
+              step={0.25}
+              value={sleep}
+              onChange={(e) => setSleep(Number(e.target.value))}
+              className="w-full accent-accent-mint"
+            />
+            <input
+              aria-label="Exact sleep hours"
+              type="number"
+              min={1.0}
+              max={12.0}
+              step={0.25}
+              value={sleep}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v)) setSleep(Math.min(Math.max(v, 1), 12));
+              }}
+              className="w-20 shrink-0 rounded-2xl bg-slate-deep px-3 py-2 text-right text-sm font-semibold text-foreground shadow-3d-pressed outline-none focus:ring-1 focus:ring-accent-mint"
+            />
+          </div>
         </div>
+
 
         <div>
           <div className="flex items-baseline justify-between">
