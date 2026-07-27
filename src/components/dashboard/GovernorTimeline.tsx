@@ -12,6 +12,7 @@ interface Props {
   targetHours: number | null | undefined;
   sleepHours: number | null | undefined;
   energyLevel: number | null | undefined;
+  burnoutScore?: number;
 }
 
 const effortColor: Record<string, string> = {
