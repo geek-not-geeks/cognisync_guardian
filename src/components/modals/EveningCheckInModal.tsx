@@ -156,6 +156,18 @@ export function EveningCheckInModal({ userId }: Props) {
 
   const open = evening && !dismissed && (tasks?.length ?? 0) > 0;
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleDismiss();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+
+
   return (
     <AnimatePresence>
       {open && (
