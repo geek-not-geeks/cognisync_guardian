@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +8,9 @@ import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPane
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
 import { GovernorTimeline } from "@/components/dashboard/GovernorTimeline";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
-import type { DailyCalibrationsRow } from "@/types/database.types";
+import { calculateBurnoutTier } from "@/lib/burnoutEngine";
+import type { BurnoutTier, DailyCalibrationsRow } from "@/types/database.types";
+
 
 
 function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
