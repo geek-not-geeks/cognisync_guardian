@@ -50,8 +50,38 @@ export function Dashboard() {
 
   const { data: profile } = useProfile();
 
-  const tier = calibration?.burnout_tier ?? null;
-  const score = calibration ? Math.round((calibration.energy_baseline ?? 0) * 10) : 0;
+  // Trailing 4-day biometrics for the Burnout Engine
+  const { data: trailing } = useQuery({
+    queryKey: ["daily_calibrations_last4", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<DailyCalibrationsRow[]> => {
+      const { data, error } = await supabase
+        .from("daily_calibrations")
+        .select("*")
+        .eq("user_id", userId!)
+        .order("date", { ascending: false })
+        .limit(4);
+      if (error) throw error;
+      return (data as DailyCalibrationsRow[] | null) ?? [];
+    },
+  });
+
+  const burnout = useMemo(() => {
+    const rows = trailing ?? [];
+    const study = rows.length
+      ? rows.map((r) => Number(r.available_study_hours ?? 0))
+      : [6, 5.5, 7, 6];
+    const sleep = rows.length
+      ? rows.map((r) => Number(r.sleep_quality ?? 0))
+      : [6, 5, 6.5, 5];
+    const energy = calibration?.energy_baseline ?? rows[0]?.energy_baseline ?? 6;
+    return calculateBurnoutTier(study, sleep, energy);
+  }, [trailing, calibration]);
+
+  const ringTier: BurnoutTier =
+    burnout.tier === "red" ? "Red" : burnout.tier === "amber" ? "Amber" : "Green";
+  const score = burnout.score;
+
 
   const metaName = (user?.user_metadata as { display_name?: string } | null)?.display_name;
   const rawName = profile?.display_name || metaName;
