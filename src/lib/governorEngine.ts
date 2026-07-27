@@ -63,8 +63,13 @@ export function generateDailySchedule(
   for (const task of sortedTasks) {
     if (currentWorkMinutes >= maxWorkMinutes) break;
 
-    // Sleep-Deprivation Guardrail: bar "Very Hard" tasks when exhausted
-    if (isSleepDeprived && task.difficulty === "Very Hard") {
+    // Biometric / Red-State Guardrail: bar cognitively expensive tasks
+    const isHeavy =
+      task.effortSize === "Deep Work" ||
+      task.difficulty === "Very Hard" ||
+      task.difficulty === "Challenging";
+
+    if (guardrailActive && isHeavy) {
       overriddenTaskIds.push(task.id);
       postponedBlocks.push({
         id: `${task.id}-postponed`,
