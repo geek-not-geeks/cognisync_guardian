@@ -190,10 +190,11 @@ export function Dashboard() {
           <GovernorTimeline
             userId={userId}
             targetHours={(profile?.target_study_hours ?? 6) * burnout.capacityMultiplier}
-
             sleepHours={calibration?.sleep_quality}
             energyLevel={calibration?.energy_baseline}
+            burnoutScore={score}
           />
+
         ) : null}
       </section>
 
