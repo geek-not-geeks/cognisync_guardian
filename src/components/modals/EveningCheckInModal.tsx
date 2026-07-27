@@ -11,15 +11,39 @@ interface Props {
   userId: string;
 }
 
+const SYNC_KEY = "last_evening_sync_date";
+
+function todayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 function isEvening(): boolean {
   return new Date().getHours() >= 21;
 }
 
+function alreadySeenToday(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(SYNC_KEY) === todayStr();
+  } catch {
+    return false;
+  }
+}
+
 export function EveningCheckInModal({ userId }: Props) {
   const qc = useQueryClient();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => alreadySeenToday());
   const [busy, setBusy] = useState(false);
   const evening = useMemo(isEvening, []);
+
+  const closeForToday = () => {
+    try {
+      localStorage.setItem(SYNC_KEY, todayStr());
+    } catch {
+      /* storage unavailable — session-only dismissal */
+    }
+    setDismissed(true);
+  };
 
   const { data: tasks } = useQuery({
     queryKey: ["tasks", userId, "evening"],
