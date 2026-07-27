@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera, FileUp, RefreshCw, X, Check, Video, Square, Loader2 } from "lucide-react";
 import { optimizeAndSanitizeAsset } from "@/utils/mediaOptimizer";
+import { isNative, captureHardwarePhoto } from "@/utils/nativeDevice";
 
 
 
@@ -214,6 +215,26 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
     }
   }, []);
 
+  /**
+   * On device, hand the capture to the OS camera (hardware pre-scaling,
+   * no WebKit memory ceiling) and feed the result straight into the
+   * optimizer, bypassing the web file picker entirely.
+   */
+  const handleNativeCapture = useCallback(async () => {
+    setError(null);
+    stopMediaTracks();
+    const nativeFile = await captureHardwarePhoto();
+    if (!nativeFile) return;
+    await handleFile(nativeFile);
+  }, [handleFile, stopMediaTracks]);
+
+  useEffect(() => {
+    if (isNative && mode === "camera" && !asset) void handleNativeCapture();
+    // Run once per camera session; re-runs are driven by retake clearing `asset`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, asset]);
+
+
 
   const handleRetake = useCallback(() => {
     if (asset?.previewUrl.startsWith("blob:")) URL.revokeObjectURL(asset.previewUrl);
@@ -254,7 +275,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
       />
 
       {/* Photo / Video mode toggle */}
-      {mode === "camera" && !asset && (
+      {!isNative && mode === "camera" && !asset && (
         <div className="mx-auto flex w-fit gap-2 rounded-full bg-surface p-1 shadow-3d-pressed">
           {(["photo", "video"] as const).map((k) => (
             <button
@@ -275,7 +296,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
       )}
 
       {/* Live camera — strict 9:16 portrait */}
-      {mode === "camera" && !asset && (
+      {!isNative && mode === "camera" && !asset && (
         <div className="relative mx-auto aspect-[9/16] w-full max-w-md overflow-hidden rounded-3xl bg-black shadow-3d-base">
           <Webcam
             ref={webcamRef}
@@ -346,7 +367,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
 
       {/* Controls */}
       <div className="flex items-center justify-center gap-6 pt-2">
-        {mode === "camera" && !asset && captureKind === "photo" && (
+        {!isNative && mode === "camera" && !asset && captureKind === "photo" && (
           <button
             type="button"
             onClick={handleSnap}
@@ -358,7 +379,7 @@ export function MediaCapture({ mode, onClose, onConfirm }: MediaCaptureProps) {
           </button>
         )}
 
-        {mode === "camera" && !asset && captureKind === "video" && (
+        {!isNative && mode === "camera" && !asset && captureKind === "video" && (
           <button
             type="button"
             onClick={isRecording ? stopRecording : handleStartRecording}
