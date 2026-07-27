@@ -96,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <NetworkBanner />
-      <main className="pt-safe mx-auto max-w-2xl px-5 pb-24 pt-6">{children}</main>
+      <main className="pt-safe pl-safe pr-safe mx-auto max-w-2xl px-5 pb-24">{children}</main>
       <BottomNav items={navItems} lockAddTask={role !== "parent" && isLocked} />
     </div>
   );
