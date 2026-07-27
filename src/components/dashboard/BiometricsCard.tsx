@@ -43,20 +43,35 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
 
   const commit = useMutation({
     mutationFn: async () => {
-      const preciseSleep = parseFloat(Number(sleep).toFixed(2));
-      const tier = computeTier(preciseSleep, energy);
-      const payload = {
+      const parsedSleep = parseFloat(Number(sleep).toFixed(2));
+      const parsedEnergy = parseFloat(Number(energy).toFixed(2));
+      const tier = computeTier(parsedSleep, parsedEnergy);
+      const base = {
         user_id: userId,
         date,
-        sleep_quality: preciseSleep,
-        energy_baseline: energy,
+        sleep_quality: parsedSleep,
+        energy_baseline: parsedEnergy,
         available_study_hours: calibration?.available_study_hours ?? 0,
         burnout_tier: tier,
       };
-      const { error } = await supabase
+
+      // Preferred payload: dual-sync decimal columns from the upgraded schema.
+      const { error } = await supabase.from("daily_calibrations").upsert(
+        {
+          ...base,
+          calibration_date: date,
+          sleep_hours: parsedSleep,
+          energy_level: parsedEnergy,
+        } as never,
+        { onConflict: "user_id,calibration_date" },
+      );
+      if (!error) return;
+
+      // Legacy schema fallback (columns/constraint not present).
+      const { error: legacyError } = await supabase
         .from("daily_calibrations")
-        .upsert(payload as never, { onConflict: "user_id,date" });
-      if (error) throw error;
+        .upsert(base as never, { onConflict: "user_id,date" });
+      if (legacyError) throw legacyError;
     },
     onSuccess: async () => {
       toast.success("Calibration committed");
