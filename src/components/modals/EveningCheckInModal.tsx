@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Clock, X } from "lucide-react";
@@ -12,6 +12,7 @@ interface Props {
 }
 
 const SYNC_KEY = "last_evening_sync_date";
+const UNDO_DURATION = 6000;
 
 function todayStr(): string {
   return new Date().toISOString().split("T")[0];
@@ -36,7 +37,7 @@ export function EveningCheckInModal({ userId }: Props) {
   const [busy, setBusy] = useState(false);
   const evening = useMemo(isEvening, []);
 
-  const closeForToday = () => {
+  const handleDismiss = () => {
     try {
       localStorage.setItem(SYNC_KEY, todayStr());
     } catch {
@@ -44,6 +45,7 @@ export function EveningCheckInModal({ userId }: Props) {
     }
     setDismissed(true);
   };
+  const closeForToday = handleDismiss;
 
   const { data: tasks } = useQuery({
     queryKey: ["tasks", userId, "evening"],
