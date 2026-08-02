@@ -116,7 +116,7 @@ function AuthPage() {
       toast.success("Verification email resent! Please check your inbox.");
       startCooldown(60);
     } catch (err) {
-      toast.error(formatAuthError(err));
+      toast.error(mapAuthError(err));
     } finally {
       setResending(false);
     }
