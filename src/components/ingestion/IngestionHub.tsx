@@ -46,7 +46,16 @@ export function IngestionHub() {
   const [drawerWarning, setDrawerWarning] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
 
+  const handleComingSoon = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toast("Coming Soon 🚀", {
+      description:
+        "AI Whiteboard Scanning and File Uploads are currently rolling out to early access.",
+    });
+  };
+
   const openReview = (warning: string | null = null) => {
+
     setDrawerWarning(warning);
     setReviewOpen(true);
   };
@@ -189,29 +198,48 @@ export function IngestionHub() {
         </header>
 
         <div className="flex flex-col gap-6">
-          {OPTIONS.map(({ id, icon: Icon, title, subtitle }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                if (id === "quick-text") setMode("quick-text");
-                else if (id === "camera-ocr") setMode("camera");
-                else if (id === "document-upload") setMode("upload");
-              }}
-              className="group w-full rounded-4xl bg-surface p-6 text-left shadow-3d-base transition-all duration-200 hover:shadow-3d-pressed active:scale-[0.98] active:shadow-3d-pressed"
-            >
-              <div className="flex items-center gap-5">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-deep shadow-3d-pressed">
-                  <Icon className="h-6 w-6 text-accent-mint" strokeWidth={2} />
+          {OPTIONS.map(({ id, icon: Icon, title, subtitle }) => {
+            const comingSoon = id !== "quick-text";
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-disabled={comingSoon}
+                onClick={(e) => {
+                  if (comingSoon) {
+                    handleComingSoon(e);
+                    return;
+                  }
+                  setMode("quick-text");
+                }}
+                style={
+                  comingSoon
+                    ? { opacity: 0.6, cursor: "not-allowed", transition: "all 0.2s ease" }
+                    : undefined
+                }
+                className="group w-full rounded-4xl bg-surface p-6 text-left shadow-3d-base transition-all duration-200 hover:shadow-3d-pressed active:scale-[0.98] active:shadow-3d-pressed"
+              >
+                <div className="flex items-center gap-5">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-slate-deep shadow-3d-pressed">
+                    <Icon className="h-6 w-6 text-accent-mint" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      {title}
+                      {comingSoon && (
+                        <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wide text-warning-amber">
+                          Coming soon
+                        </span>
+                      )}
+                    </h2>
+                    <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-                  <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
+
       </section>
 
       <BatchOCRReviewDrawer

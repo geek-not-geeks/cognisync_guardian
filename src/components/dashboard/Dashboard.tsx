@@ -11,6 +11,7 @@ import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import { EveningCheckInModal } from "@/components/modals/EveningCheckInModal";
 
 import { calculateBurnoutTier } from "@/lib/burnoutEngine";
+import { localDateString } from "@/utils/authErrors";
 import type { BurnoutTier, DailyCalibrationsRow } from "@/types/database.types";
 
 
@@ -23,7 +24,8 @@ function greetingFor(date: Date): "Morning" | "Afternoon" | "Evening" {
 }
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Local-time YYYY-MM-DD, immune to UTC drift around midnight.
+  return localDateString();
 }
 
 export function Dashboard() {

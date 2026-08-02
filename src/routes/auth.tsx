@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { signInSchema, signUpSchema, formatAuthError } from "@/lib/auth";
+import { mapAuthError } from "@/utils/authErrors";
+
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 export const Route = createFileRoute("/auth")({
@@ -87,16 +89,17 @@ function AuthPage() {
         toast.success("Signed in.");
       }
     } catch (err) {
-      const msg = formatAuthError(err);
+      const legacyMsg = formatAuthError(err);
       const code =
         typeof err === "object" && err && "code" in err
           ? (err as { code?: unknown }).code
           : undefined;
-      if (code === "email_not_confirmed" || msg === UNCONFIRMED_COPY) {
+      if (code === "email_not_confirmed" || legacyMsg === UNCONFIRMED_COPY) {
         setUnconfirmedEmail(parsed.data.email);
       }
-      toast.error(msg);
+      toast.error(mapAuthError(err));
     } finally {
+
       setBusy(false);
     }
   }
@@ -113,7 +116,7 @@ function AuthPage() {
       toast.success("Verification email resent! Please check your inbox.");
       startCooldown(60);
     } catch (err) {
-      toast.error(formatAuthError(err));
+      toast.error(mapAuthError(err));
     } finally {
       setResending(false);
     }
