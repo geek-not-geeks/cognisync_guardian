@@ -40,7 +40,29 @@ export function useAuth(): AuthState {
         user: session?.user ?? null,
         loading: false,
       });
+
+      // Foreign Key Failsafe: guarantee a public.users row exists so task
+      // inserts never violate tasks_user_id_fkey.
+      const u = session?.user;
+      if (u) {
+        void (async () => {
+          try {
+            const meta = u.user_metadata as { display_name?: string } | null;
+            await supabase.from("users").upsert(
+              {
+                id: u.id,
+                display_name: meta?.display_name || "Scholar",
+                target_study_hours: 6.0,
+              } as never,
+              { onConflict: "id", ignoreDuplicates: false },
+            );
+          } catch {
+            // Silent background failsafe — never block the auth flow.
+          }
+        })();
+      }
     });
+
 
     return () => {
       mounted = false;
