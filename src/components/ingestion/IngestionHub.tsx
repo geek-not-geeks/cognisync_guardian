@@ -46,7 +46,16 @@ export function IngestionHub() {
   const [drawerWarning, setDrawerWarning] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
 
+  const handleComingSoon = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toast("Coming Soon 🚀", {
+      description:
+        "AI Whiteboard Scanning and File Uploads are currently rolling out to early access.",
+    });
+  };
+
   const openReview = (warning: string | null = null) => {
+
     setDrawerWarning(warning);
     setReviewOpen(true);
   };
