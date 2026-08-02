@@ -43,6 +43,7 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
 
   const commit = useMutation({
     mutationFn: async () => {
+      try {
       const parsedSleep = parseFloat(Number(sleep).toFixed(2));
       const parsedEnergy = parseFloat(Number(energy).toFixed(2));
       const tier = computeTier(parsedSleep, parsedEnergy);
@@ -72,6 +73,10 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
         .from("daily_calibrations")
         .upsert(base as never, { onConflict: "user_id,date" });
       if (legacyError) throw legacyError;
+      } catch (err) {
+        toast.error("Calibration sync failed. Please check your connection.");
+        throw err;
+      }
     },
     onSuccess: async () => {
       toast.success("Calibration committed");
@@ -82,8 +87,8 @@ export function BiometricsCard({ userId, date, calibration }: Props) {
       await qc.invalidateQueries({ queryKey: ["tasks"] });
       setEditing(false);
     },
-    onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : "Failed to save calibration");
+    onError: () => {
+      // Error copy already surfaced inside the mutation boundary.
     },
   });
 
