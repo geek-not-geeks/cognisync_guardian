@@ -78,25 +78,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CogniSync — Cognitive Load & Burnout Prevention Engine" },
+      { title: "CogniSync" },
       {
         name: "description",
         content:
-          "CogniSync is an enterprise-grade cognitive load and burnout prevention engine for high-achieving secondary students.",
+          "Your daily cognitive load and energy-aware task manger.",
       },
       { name: "author", content: "CogniSync" },
-      { property: "og:title", content: "CogniSync — Cognitive Load & Burnout Prevention Engine" },
+      { property: "og:title", content: "CogniSync" },
       {
         property: "og:description",
         content:
-          "Adaptive scheduling that respects human energy. Prevent burnout, sustain focus, and protect elite academic performance.",
+          "Your daily cognitive load and energy-aware task manger.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "CogniSync" },
+      { name: "twitter:description", content: "Your daily cognitive load and energy-aware task manger." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6e58e0a5-a29c-4d52-baf3-25c834310805/id-preview-65f9dac1--f06a3480-673d-4c64-adb7-2ce2d9ad42aa.lovable.app-1785187842540.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6e58e0a5-a29c-4d52-baf3-25c834310805/id-preview-65f9dac1--f06a3480-673d-4c64-adb7-2ce2d9ad42aa.lovable.app-1785187842540.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
