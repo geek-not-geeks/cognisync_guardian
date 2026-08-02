@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { signInSchema, signUpSchema, formatAuthError } from "@/lib/auth";
+import { mapAuthError } from "@/utils/authErrors";
+
 import { ForgotPasswordModal } from "@/components/auth/ForgotPasswordModal";
 
 export const Route = createFileRoute("/auth")({
