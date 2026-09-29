@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { CompletionRatingModal } from "@/components/modals/CompletionRatingModal";
 import type { EffortSize, DifficultyLevel, TasksRow } from "@/types/database.types";
 
 interface Props {
@@ -34,6 +36,7 @@ function formatDeadline(deadline: string | null): string {
 
 export function TaskPipeline({ userId }: Props) {
   const qc = useQueryClient();
+  const [ratingTask, setRatingTask] = useState<TasksRow | null>(null);
 
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["tasks", userId, "pending"],
@@ -50,16 +53,26 @@ export function TaskPipeline({ userId }: Props) {
   });
 
   const complete = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (params: {
+      id: string;
+      selfReportedSuccess: number;
+      actualEffortMinutes: number | null;
+    }) => {
       const { error } = await supabase
         .from("tasks")
-        .update({ status: "completed" } as never)
-        .eq("id", id);
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          self_reported_success: params.selfReportedSuccess,
+          actual_effort_minutes: params.actualEffortMinutes,
+        } as never)
+        .eq("id", params.id);
       if (error) throw error;
-      return id;
+      return params.id;
     },
     onSuccess: async () => {
       toast.success("Task completed");
+      setRatingTask(null);
       await qc.invalidateQueries({ queryKey: ["tasks", userId] });
       await qc.invalidateQueries({ queryKey: ["tasks_count", userId, "pending"] });
     },
@@ -87,45 +100,61 @@ export function TaskPipeline({ userId }: Props) {
   }
 
   return (
-    <ul className="space-y-3">
-      {tasks.map((task) => (
-        <li
-          key={task.id}
-          className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base"
-        >
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${difficultyDot[task.difficulty]}`}
-                aria-label={`Difficulty ${task.difficulty}`}
-              />
-              <p className="truncate text-base font-semibold text-foreground">
-                {task.title}
-              </p>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${effortColor[task.effort_size]}`}
-              >
-                {task.effort_size}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
-                <CalendarClock className="h-3.5 w-3.5" />
-                {formatDeadline(task.deadline)}
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => complete.mutate(task.id)}
-            disabled={complete.isPending}
-            aria-label={`Mark ${task.title} complete`}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-deep text-text-secondary transition-all hover:text-accent-mint hover:border-accent-mint active:scale-95 disabled:opacity-50"
+    <>
+      <ul className="space-y-3">
+        {tasks.map((task) => (
+          <li
+            key={task.id}
+            className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base"
           >
-            <Check className="h-5 w-5" />
-          </button>
-        </li>
-      ))}
-    </ul>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${difficultyDot[task.difficulty]}`}
+                  aria-label={`Difficulty ${task.difficulty}`}
+                />
+                <p className="truncate text-base font-semibold text-foreground">
+                  {task.title}
+                </p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${effortColor[task.effort_size]}`}
+                >
+                  {task.effort_size}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  {formatDeadline(task.deadline)}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRatingTask(task)}
+              disabled={complete.isPending}
+              aria-label={`Mark ${task.title} complete`}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-deep text-text-secondary transition-all hover:text-accent-mint hover:border-accent-mint active:scale-95 disabled:opacity-50"
+            >
+              <Check className="h-5 w-5" />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <CompletionRatingModal
+        open={ratingTask !== null}
+        taskTitle={ratingTask?.title ?? ""}
+        onClose={() => setRatingTask(null)}
+        onSubmit={async ({ selfReportedSuccess, actualEffortMinutes }) => {
+          if (!ratingTask) return;
+          await complete.mutateAsync({
+            id: ratingTask.id,
+            selfReportedSuccess,
+            actualEffortMinutes,
+          });
+        }}
+      />
+    </>
   );
 }
