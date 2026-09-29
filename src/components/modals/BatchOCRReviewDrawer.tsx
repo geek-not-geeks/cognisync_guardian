@@ -11,6 +11,7 @@ import type {
   Difficulty,
   EffortSize,
   ParsedTaskPayload,
+  ConfidenceLevel,
 } from "@/types/task";
 
 interface BatchOCRReviewDrawerProps {
@@ -27,6 +28,8 @@ const DIFFICULTY_OPTIONS: readonly Difficulty[] = [
   "Challenging",
   "Very Hard",
 ];
+const CONFIDENCE_OPTIONS: readonly ConfidenceLevel[] = ["1", "2", "3", "4", "5"];
+const DEFAULT_CONFIDENCE: ConfidenceLevel = "3";
 
 export function BatchOCRReviewDrawer({
   open,
@@ -78,6 +81,7 @@ export function BatchOCRReviewDrawer({
         difficulty: t.difficulty || "Challenging",
         status: "pending" as const,
         is_governor_locked: false,
+        confidence_rating: Number(t.confidence || DEFAULT_CONFIDENCE),
       };
     });
 
@@ -290,6 +294,18 @@ function TaskCard({ index, task, onUpdate, onRemove }: TaskCardProps) {
           value={task.difficulty}
           onChange={(v) => onUpdate(index, "difficulty", v)}
         />
+      </Field>
+
+      <Field label="Your Confidence (will you actually do this?)">
+        <PillGroup
+          ariaLabel="Confidence"
+          options={CONFIDENCE_OPTIONS}
+          value={task.confidence ?? DEFAULT_CONFIDENCE}
+          onChange={(v) => onUpdate(index, "confidence", v)}
+        />
+        <p className="mt-2 text-[11px] text-text-secondary">
+          1 = probably won't happen · 5 = certain
+        </p>
       </Field>
     </div>
   );
