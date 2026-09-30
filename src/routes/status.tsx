@@ -164,6 +164,25 @@ function StatusPage() {
                         {formatDeadline(task.deadline)}
                       </span>
                     </div>
+                    {tab === "archived" &&
+                      task.confidence_rating != null &&
+                      task.self_reported_success != null && (
+                        <div className="mt-2 flex items-center gap-2 text-[11px]">
+                          <span className="text-text-secondary">
+                            Predicted {task.confidence_rating}/5
+                          </span>
+                          <span className="text-text-secondary">→</span>
+                          <span
+                            className={
+                              task.self_reported_success >= task.confidence_rating
+                                ? "font-semibold text-accent-mint"
+                                : "font-semibold text-governor-red"
+                            }
+                          >
+                            Actual {task.self_reported_success}/5
+                          </span>
+                        </div>
+                      )}
                   </button>
                   {tab === "archived" && (
                     <button
