@@ -34,6 +34,26 @@ function formatDeadline(deadline: string | null): string {
   });
 }
 
+/**
+ * Whether a still-pending task's deadline has already passed.
+ *
+ * This is computed client-side rather than persisted as a "missed" DB
+ * status. The TaskStatus type includes "missed" as a value, but nothing
+ * writes it — there is no scheduled job flipping status when a deadline
+ * lapses. Doing that properly needs a server-side cron (a Supabase Edge
+ * Function on a schedule) to be the source of truth, since client-side
+ * computation alone can't reliably update rows nobody has open. That's
+ * deliberately out of scope for now; this is the fast, honest interim fix
+ * so overdue tasks are at least visible, not silently identical to
+ * upcoming ones.
+ */
+function isOverdue(task: TasksRow): boolean {
+  if (task.status !== "pending" || !task.deadline) return false;
+  const d = new Date(task.deadline);
+  if (Number.isNaN(d.getTime())) return false;
+  return d.getTime() < Date.now();
+}
+
 export function TaskPipeline({ userId }: Props) {
   const qc = useQueryClient();
   const [ratingTask, setRatingTask] = useState<TasksRow | null>(null);
@@ -48,7 +68,15 @@ export function TaskPipeline({ userId }: Props) {
         .eq("status", "pending")
         .order("deadline", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data as TasksRow[] | null) ?? [];
+      const rows = (data as TasksRow[] | null) ?? [];
+      // Supabase already sorts by deadline ascending; additionally float
+      // overdue tasks to the very top so they can't be missed by scrolling.
+      return [...rows].sort((a, b) => {
+        const aOverdue = isOverdue(a);
+        const bOverdue = isOverdue(b);
+        if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+        return 0;
+      });
     },
   });
 
@@ -102,10 +130,14 @@ export function TaskPipeline({ userId }: Props) {
   return (
     <>
       <ul className="space-y-3">
-        {tasks.map((task) => (
+        {tasks.map((task) => {
+          const overdue = isOverdue(task);
+          return (
           <li
             key={task.id}
-            className="mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base"
+            className={`mb-3 flex items-center justify-between gap-3 rounded-3xl bg-surface p-4 shadow-3d-base ${
+              overdue ? "border-l-4 border-governor-red" : ""
+            }`}
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -116,6 +148,11 @@ export function TaskPipeline({ userId }: Props) {
                 <p className="truncate text-base font-semibold text-foreground">
                   {task.title}
                 </p>
+                {overdue && (
+                  <span className="inline-flex shrink-0 rounded-full bg-governor-red/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-governor-red">
+                    Overdue
+                  </span>
+                )}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span
@@ -123,7 +160,11 @@ export function TaskPipeline({ userId }: Props) {
                 >
                   {task.effort_size}
                 </span>
-                <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                <span
+                  className={`inline-flex items-center gap-1 text-xs ${
+                    overdue ? "font-semibold text-governor-red" : "text-text-secondary"
+                  }`}
+                >
                   <CalendarClock className="h-3.5 w-3.5" />
                   {formatDeadline(task.deadline)}
                 </span>
@@ -139,7 +180,8 @@ export function TaskPipeline({ userId }: Props) {
               <Check className="h-5 w-5" />
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <CompletionRatingModal

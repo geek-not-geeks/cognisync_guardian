@@ -1,24 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/layouts/AppShell";
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// "/dashboard" is a legacy route left over from an earlier iteration; the
+// real dashboard now lives at "/". Redirect rather than delete, so any
+// bookmarked or hardcoded links (and search-engine-indexed URLs) still land
+// somewhere correct instead of 404ing or hitting a dead stub.
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({
-    meta: [
-      { title: "Dashboard — CogniSync" },
-      { name: "description", content: "Your daily execution map and cognitive load overview." },
-    ],
-  }),
-  component: DashboardPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/" });
+  },
 });
-
-function DashboardPage() {
-  return (
-    <AppShell>
-      <PlaceholderPage
-        title="Dashboard"
-        description="Your daily execution map."
-      />
-    </AppShell>
-  );
-}

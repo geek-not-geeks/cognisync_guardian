@@ -43,7 +43,7 @@ function UpdatePasswordPage() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast.success("Password securely updated!");
-      void navigate({ to: "/dashboard" });
+      void navigate({ to: "/" });
     } catch (err) {
       toast.error(formatAuthError(err));
     } finally {
