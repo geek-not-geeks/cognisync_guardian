@@ -1,12 +1,12 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
-export function createLovableAiGatewayProvider(lovableApiKey: string) {
-  return createOpenAICompatible({
-    name: "lovable",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    headers: {
-      "Lovable-API-Key": lovableApiKey,
-      "X-Lovable-AIG-SDK": "vercel-ai-sdk",
-    },
-  });
+/**
+ * Direct Gemini provider — replaces the earlier Lovable AI Gateway proxy.
+ * Previously this called https://ai.gateway.lovable.dev, which routed every
+ * request (and its billing) through Lovable's infrastructure. This calls
+ * Google's Generative Language API directly with our own key, so OCR/
+ * syllabus parsing no longer depends on Lovable at runtime.
+ */
+export function createGeminiProvider(apiKey: string) {
+  return createGoogleGenerativeAI({ apiKey });
 }
