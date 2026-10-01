@@ -10,7 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportAppError } from "../lib/error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -39,7 +39,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportAppError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -92,11 +92,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Your daily cognitive load and energy-aware task manger.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "CogniSync" },
       { name: "twitter:description", content: "Your daily cognitive load and energy-aware task manger." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6e58e0a5-a29c-4d52-baf3-25c834310805/id-preview-65f9dac1--f06a3480-673d-4c64-adb7-2ce2d9ad42aa.lovable.app-1785187842540.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6e58e0a5-a29c-4d52-baf3-25c834310805/id-preview-65f9dac1--f06a3480-673d-4c64-adb7-2ce2d9ad42aa.lovable.app-1785187842540.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
