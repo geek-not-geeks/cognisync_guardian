@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { createGeminiProvider } from "@/lib/ai-gateway.server";
 
 const InputSchema = z.object({
   imageBase64: z.string().optional(),
@@ -31,12 +31,12 @@ export const parseSyllabus = createServerFn({ method: "POST" })
       return { ok: false as const, reason: "No image payload or text string provided." };
     }
 
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
     if (!key) {
       return { ok: false as const, reason: "AI service is not configured." };
     }
 
-    const gateway = createLovableAiGatewayProvider(key);
+    const gemini = createGeminiProvider(key);
 
     const content: Array<Record<string, unknown>> = [{ type: "text", text: PROMPT }];
     if (data.imageBase64) {
@@ -52,7 +52,7 @@ export const parseSyllabus = createServerFn({ method: "POST" })
 
     try {
       const { output } = await generateText({
-        model: gateway("google/gemini-3.6-flash"),
+        model: gemini("gemini-2.5-flash-lite"),
         output: Output.object({ schema: ResultSchema }),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         messages: [{ role: "user", content: content as any }],
