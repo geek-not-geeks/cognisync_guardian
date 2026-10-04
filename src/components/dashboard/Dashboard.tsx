@@ -7,6 +7,7 @@ import { MacroScoreRing } from "@/components/dashboard/MacroScoreRing";
 import { GovernorLockoutPanel } from "@/components/dashboard/GovernorLockoutPanel";
 import { BiometricsCard } from "@/components/dashboard/BiometricsCard";
 import { GovernorTimeline } from "@/components/dashboard/GovernorTimeline";
+import { PersonalizationPanel } from "@/components/dashboard/PersonalizationPanel";
 import { useGovernorLockout } from "@/hooks/useGovernorLockout";
 import { EveningCheckInModal } from "@/components/modals/EveningCheckInModal";
 
@@ -165,6 +166,8 @@ export function Dashboard() {
 
         </div>
       </div>
+
+      {userId && <PersonalizationPanel userId={userId} />}
 
       {userId && (
         <BiometricsCard
