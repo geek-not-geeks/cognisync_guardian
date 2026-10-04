@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddTaskRouteImport } from './routes/add-task'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ParentViewRouteImport } from './routes/parent-view'
@@ -33,6 +34,11 @@ const AddTaskRoute = AddTaskRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/add-task': typeof AddTaskRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/parent-view': typeof ParentViewRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/add-task': typeof AddTaskRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/parent-view': typeof ParentViewRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/add-task': typeof AddTaskRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/onboarding': typeof OnboardingRoute
   '/parent-view': typeof ParentViewRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/add-task'
     | '/auth'
+    | '/calendar'
     | '/dashboard'
     | '/onboarding'
     | '/parent-view'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/add-task'
     | '/auth'
+    | '/calendar'
     | '/dashboard'
     | '/onboarding'
     | '/parent-view'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/add-task'
     | '/auth'
+    | '/calendar'
     | '/dashboard'
     | '/onboarding'
     | '/parent-view'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AddTaskRoute: typeof AddTaskRoute
   AuthRoute: typeof AuthRoute
+  CalendarRoute: typeof CalendarRoute
   DashboardRoute: typeof DashboardRoute
   OnboardingRoute: typeof OnboardingRoute
   ParentViewRoute: typeof ParentViewRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AddTaskRoute: AddTaskRoute,
   AuthRoute: AuthRoute,
+  CalendarRoute: CalendarRoute,
   DashboardRoute: DashboardRoute,
   OnboardingRoute: OnboardingRoute,
   ParentViewRoute: ParentViewRoute,

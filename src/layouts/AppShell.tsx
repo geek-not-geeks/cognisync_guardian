@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Home, PlusCircle, Activity, User, Users, type LucideIcon } from "lucide-react";
+import { Home, PlusCircle, Activity, User, Users, CalendarDays, type LucideIcon } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,7 @@ import { NetworkBanner } from "@/components/ui/NetworkBanner";
 import { supabase } from "@/lib/supabase";
 
 
-type NavPath = "/" | "/add-task" | "/status" | "/profile" | "/parent-view";
+type NavPath = "/" | "/add-task" | "/calendar" | "/status" | "/profile" | "/parent-view";
 
 interface NavItem {
   to: NavPath;
@@ -20,6 +20,7 @@ interface NavItem {
 const STUDENT_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/add-task", label: "Add Task", icon: PlusCircle },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/status", label: "Status", icon: Activity },
   { to: "/profile", label: "Profile", icon: User },
 ];
