@@ -86,6 +86,32 @@ describe("generateDailySchedule", () => {
     expect(recoveryBlocks[0].durationMinutes).toBe(10);
   });
 
+  /**
+   * Regression test for a real bug found by screen-recording a user session:
+   * recovery blocks used to share one hardcoded taskId ("recovery-interval")
+   * across every task. Once a task was marked complete, its work block
+   * correctly disappeared from the UI (filtered by taskId status), but its
+   * recovery block — tied to that shared fake id, which never has a
+   * "completed" status — stayed on screen forever. Completing several Deep
+   * Work tasks left a pile of orphaned "Cognitive Recovery" rows with no
+   * task attached to them. Fix: each recovery block's taskId must match its
+   * own parent task's id, so the two rise and fall together.
+   */
+  it("ties each recovery block's taskId to its own parent task, not a shared constant", () => {
+    const tasks = [
+      task({ id: "task-a", effortSize: "Standard" }), // 50 min -> triggers a recovery block
+      task({ id: "task-b", effortSize: "Standard" }),
+    ];
+    const result = generateDailySchedule(tasks, 6, 8, 8, 0);
+    const recoveryBlocks = result.blocks.filter((b) => b.type === "recovery");
+    expect(recoveryBlocks.length).toBeGreaterThan(0);
+    for (const rb of recoveryBlocks) {
+      expect(rb.taskId).not.toBe("recovery-interval");
+      // every recovery block's taskId must match some real task in the input
+      expect(tasks.some((t) => t.id === rb.taskId)).toBe(true);
+    }
+  });
+
   it("sorts tasks by earliest deadline first, undated tasks last", () => {
     const tasks = [
       task({ id: "no-deadline", deadline: null }),

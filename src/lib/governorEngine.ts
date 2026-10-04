@@ -113,7 +113,12 @@ export function generateDailySchedule(
     ) {
       blocks.push({
         id: `${task.id}-rest-${blocks.length}`,
-        taskId: "recovery-interval",
+        // Tied to the parent task's id (not a shared constant) so that once
+        // the parent task is marked complete and its work block is filtered
+        // out of the UI, this recovery block is recognized as belonging to
+        // a completed task and filtered out too, instead of being orphaned
+        // and accumulating forever.
+        taskId: task.id,
         title: "Cognitive Recovery Interval",
         type: "recovery",
         durationMinutes: 10,
