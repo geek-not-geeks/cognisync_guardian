@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Coffee, Timer, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { localDateString } from "@/utils/authErrors";
 import { generateDailySchedule } from "@/lib/governorEngine";
 import { PostponedTray } from "@/components/dashboard/PostponedTray";
 import type { EffortSize, DifficultyLevel, TasksRow } from "@/types/database.types";
@@ -56,6 +57,22 @@ export function GovernorTimeline({
     [tasks],
   );
 
+  // "Completed Today" must mean today, not "ever completed". Previously
+  // any task with status "completed" showed here permanently, regardless
+  // of when it was actually finished — old test tasks from weeks ago kept
+  // appearing forever. Bound it to completed_at falling on today's local
+  // calendar date.
+  const completedTodayIds = useMemo(() => {
+    const todayKey = localDateString();
+    const ids = new Set<string>();
+    for (const t of tasks ?? []) {
+      if (t.status === "completed" && t.completed_at && localDateString(new Date(t.completed_at)) === todayKey) {
+        ids.add(t.id);
+      }
+    }
+    return ids;
+  }, [tasks]);
+
   const schedule = useMemo(
     () =>
       generateDailySchedule(
@@ -93,9 +110,9 @@ export function GovernorTimeline({
   const completedBlocks = useMemo(
     () =>
       schedule.blocks.filter(
-        (b) => b.type === "work" && statusById.get(b.taskId) === "completed",
+        (b) => b.type === "work" && completedTodayIds.has(b.taskId),
       ),
-    [schedule, statusById],
+    [schedule, completedTodayIds],
   );
 
   const complete = useMutation({

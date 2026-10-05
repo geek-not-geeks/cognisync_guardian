@@ -8,6 +8,7 @@ import { AppShell } from "@/layouts/AppShell";
 import { PillGroup } from "@/components/atomic/PillGroup";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { localDateString } from "@/utils/authErrors";
 import type {
   DifficultyLevel,
   EffortSize,
@@ -73,7 +74,28 @@ function StatusPage() {
         .in("status", activeStatuses)
         .order("deadline", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data as TasksRow[] | null) ?? [];
+      const rows = (data as TasksRow[] | null) ?? [];
+
+      // Archived History was showing every completed task ever, including
+      // ones from weeks-old testing sessions — unbounded history that only
+      // grows and gets less useful. Bound "completed" tasks to the last 7
+      // days via completed_at. "rolled_back" tasks have no timestamp field
+      // in this schema at all (no created_at/updated_at, and completed_at
+      // is never set for them) — the backend schema is owned externally
+      // and isn't something to migrate here, so they're left unbounded for
+      // now rather than silently hidden; a real fix needs a schema change.
+      if (tab === "archived") {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const cutoffKey = localDateString(sevenDaysAgo);
+        return rows.filter((t) => {
+          if (t.status === "rolled_back") return true;
+          if (!t.completed_at) return false;
+          return localDateString(new Date(t.completed_at)) >= cutoffKey;
+        });
+      }
+
+      return rows;
     },
   });
 
