@@ -37,6 +37,7 @@ export function PersonalizationPanel({ userId }: Props) {
         .map((t) => ({
           confidence: t.confidence_rating as number,
           completed: t.status === "completed",
+          burnoutIndexAtCreation: t.burnout_index_at_creation ?? undefined,
         }));
     },
   });

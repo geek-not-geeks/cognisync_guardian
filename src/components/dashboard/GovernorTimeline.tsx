@@ -4,6 +4,7 @@ import { Check, Coffee, Timer, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { localDateString } from "@/utils/authErrors";
+import { computePersonalizationInsight } from "@/lib/personalizationEngine";
 import { generateDailySchedule } from "@/lib/governorEngine";
 import { PostponedTray } from "@/components/dashboard/PostponedTray";
 import type { EffortSize, DifficultyLevel, TasksRow } from "@/types/database.types";
@@ -69,6 +70,30 @@ export function GovernorTimeline({
       if (t.status === "completed" && t.completed_at && localDateString(new Date(t.completed_at)) === todayKey) {
         ids.add(t.id);
       }
+    }
+    return ids;
+  }, [tasks]);
+
+  // This is the governor actually acting on the personalized model, not
+  // just displaying it: once enough real observations exist, flag pending
+  // tasks the model predicts you're unlikely to finish, using that specific
+  // task's own confidence rating and the burnout level it was created under.
+  const lowCompletionTaskIds = useMemo(() => {
+    const ids = new Set<string>();
+    const observations = (tasks ?? [])
+      .filter((t) => t.confidence_rating != null && t.status !== "pending")
+      .map((t) => ({
+        confidence: t.confidence_rating as number,
+        completed: t.status === "completed",
+        burnoutIndexAtCreation: t.burnout_index_at_creation ?? undefined,
+      }));
+    const insight = computePersonalizationInsight(observations);
+    if (insight.status !== "active") return ids;
+
+    for (const t of tasks ?? []) {
+      if (t.status !== "pending" || t.confidence_rating == null) continue;
+      const p = insight.predict(t.confidence_rating, t.burnout_index_at_creation ?? undefined);
+      if (p < 0.4) ids.add(t.id);
     }
     return ids;
   }, [tasks]);
@@ -228,6 +253,14 @@ export function GovernorTimeline({
                   <p className="truncate text-base font-semibold text-foreground">
                     {block.title}
                   </p>
+                  {lowCompletionTaskIds.has(block.taskId) && (
+                    <span
+                      className="inline-flex shrink-0 rounded-full bg-governor-red/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-governor-red"
+                      title="Your own logged history suggests tasks like this, at this confidence and burnout level, often don't get finished."
+                    >
+                      Likely to slip
+                    </span>
+                  )}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-slate-deep px-2.5 py-0.5 text-[10px] font-semibold text-text-secondary">

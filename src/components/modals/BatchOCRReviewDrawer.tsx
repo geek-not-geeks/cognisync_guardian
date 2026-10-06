@@ -7,6 +7,7 @@ import { PillGroup } from "@/components/atomic/PillGroup";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { parseDefensiveDate, sanitizeTaskTitle } from "@/utils/dateParser";
+import { getCurrentBurnoutScore } from "@/lib/getCurrentBurnoutScore";
 import type {
   Difficulty,
   EffortSize,
@@ -69,6 +70,7 @@ export function BatchOCRReviewDrawer({
     if (tasks.length === 0) return;
 
     setSaving(true);
+    const burnoutAtCreation = await getCurrentBurnoutScore(user.id);
     const preparedTasks = tasks.map((t) => {
       const parsedDeadline = parseDefensiveDate(t.deadline || "");
       const defaultDeadline = new Date(Date.now() + 86_400_000).toISOString();
@@ -82,6 +84,7 @@ export function BatchOCRReviewDrawer({
         status: "pending" as const,
         is_governor_locked: false,
         confidence_rating: Number(t.confidence || DEFAULT_CONFIDENCE),
+        burnout_index_at_creation: burnoutAtCreation,
       };
     });
 

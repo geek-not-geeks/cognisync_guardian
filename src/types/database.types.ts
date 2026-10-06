@@ -51,6 +51,14 @@ export interface TasksRow {
   actual_effort_minutes: number | null;
   /** Student's post-hoc rating (1-5) of how well it actually went, independent of "completed" status. */
   self_reported_success: number | null;
+  /** Burnout score (0-100) at the moment this task was created. Makes the
+   * predictive model multivariate (confidence + burnout) instead of
+   * confidence-only. Null for tasks created before this field existed. */
+  burnout_index_at_creation: number | null;
+  /** Row creation timestamp. Added alongside burnout_index_at_creation;
+   * also usable for date-bounding tasks with no other timestamp (e.g.
+   * rolled_back tasks, which never set completed_at). */
+  created_at: string;
 }
 
 /** Row shape for the burnout_snapshots table — persisted history of the
